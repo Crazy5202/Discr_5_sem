@@ -27,8 +27,8 @@ class STree
 public:
     STree(std::string _text);
 private:
-    void SPA(int i); // алгоритм одной фазы
-    int SEA(int i, int j); // алгоритм одного продолжения фазы
+    void SPA(); // алгоритм одной фазы
+    int SEA(int j); // алгоритм одного продолжения фазы
     void split(); // правило 2 - разбиение дуги
     Node* skip_count(Node* start_node, int start, int end); // приём 1 - пропуск дуг в зависимости от длин
 
@@ -46,29 +46,42 @@ STree::STree(std::string _text) : text(_text+'$') {
     made_node = false;
     end_ind = new int(0);
     root = new Node(nullptr, 0, end_ind);
-    j_i = 1;
+    j_i = 0;
     prev_ext = new Node(root, 0, end_ind);
     add_child(root, prev_ext);
-    for (int i=1; i<text.size(); ++i) {
-        SPA(i);
+    while (*end_ind < text.size()) {
+        SPA();
     }
 }
 
-void STree::SPA(int i) {
+void STree::SPA() {
     (*end_ind)++;
-    for (int j = j_i+1; j<= i+1; ++j) {
-        if (SEA(i, j) == 3) break;
+    for (int j = j_i+1; j<= (*end_ind)+1; ++j) {
+        if (SEA(j) == 3) break;
     }
 }
 
-int STree::SEA(int i, int j) {
+int STree::SEA(int j) {
     Node* next_node;
     if (prev_ext->suffix_link != nullptr) { // переходим либо по суффиксной ссылке, либо в корень
         next_node = prev_ext->suffix_link;
     } else {
-        next_node = root->children[text[j]];
+        next_node = prev_ext->parent;
     }
-    skip_count(next_node);
+    int inp_len = *end_ind - j;
+    Node* child_node = next_node->children[text[j]];
+    while ((child_node != NULL) and (*end_ind-j > child_node->get_length())) {
+        next_node = child_node;
+        j+=child_node->get_length();
+        child_node = child_node->children[text[j]];
+    }
+    if ((next_node->children.empty() == false and *next_node->end_ind != *end_ind)
+        or (*next_node->end_ind == *end_ind and next_node->children[*end_ind] !=NULL)
+        or (*next_node->end_ind == *end_ind and )) {
+        split();
+    } else {
+
+    }
 }
 
 Node* STree::skip_count(Node* start_node, int start, int end) {
