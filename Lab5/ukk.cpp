@@ -34,16 +34,18 @@ public:
 private:
     void SPA(int i); // алгоритм одной фазы
     int SEA(int j, int i); // алгоритм одного продолжения фазы
-    void split(); // правило 2 - разбиение дуги
+    void extend_tree(int char_index); // правило 2 - разбиение дуги
     std::pair<Node*, int> skip_count(Node* start_node, int start, int end); // приём 1 - пропуск дуг в зависимости от длин
 
     void add_child(Node* parent, Node* child);
     char get_char(int index);
     bool ends_in_node(Node* node, int end);
-    bool STree::continues_with_char(Node* node, int tree_index, int end);
-    int STree::get_key(Node* node, int index);
+    bool continues_with_char(Node* node, int tree_index, int end);
+    int get_key(Node* node, int index);
+    void remove_child(Node* parent, Node* child_to_remove);
+    void split_edge(Node* node, int char_index);
 
-    Node* STree::get_child(Node* node, int char_index);
+    Node* get_child(Node* node, int char_index);
     Node* walk_up(int& search_start, int& search_end);
     
     Node* root;
@@ -79,7 +81,11 @@ void STree::SPA(int i) {
     (*end_ind)++;
 
     for (int j = j_i+1; j<= i+1; ++j) {
-        if (SEA(j, i) == 3) break;
+        if (SEA(j, i) == true) {
+            j_i = j-1;
+            break;
+        }
+        j_i = j;
     }
 }
 
@@ -120,14 +126,20 @@ int STree::SEA(int j, int i) {
     if (search_node == root) res = skip_count(root, j, i);
     else res = skip_count(search_node, search_start, search_end);
 
-    Node* new_ext = res.first;
-    int new_end = res.second;
+    new_ext = res.first;
+    new_end = res.second;
     if (!(new_ext->children.empty() and ends_in_node(new_ext, new_end)) 
     and !(continues_with_char(new_ext, i+1, new_end))) {
-        split();
+        extend_tree(i+1);
     } else {
         three_applied = true;
     }
+
+    if (was_extended_old) prev_ext->suffix_link = new_ext;
+
+    prev_ext = new_ext;
+    prev_end = new_end;
+    return three_applied;
 }
 
 int STree::get_key(Node* node, int index) {
@@ -147,20 +159,45 @@ Node* STree::get_child(Node* node, int char_index) {
 std::pair<Node*, int> STree::skip_count(Node* search_node, int search_start, int search_end) {
     int char_index = *search_node->end_ind;
 
-  while (search_start <= search_end) {
-    search_node = get_child(search_node, search_start);
-    if (search_node->get_length() < search_end - search_start + 1)
-        char_index = *search_node->end_ind;
-    else
-        char_index = search_node->start_ind + (search_end - search_start);
-    search_start+=search_node->get_length();
-  }
-  return std::make_pair(search_node, char_index);
+    while (search_start <= search_end) {
+        search_node = get_child(search_node, search_start);
+        if (search_node->get_length() < search_end - search_start + 1)
+            char_index = *search_node->end_ind;
+        else
+            char_index = search_node->start_ind + (search_end - search_start);
+        search_start+=search_node->get_length();
+    }
+    return std::make_pair(search_node, char_index);
 }
 
-void STree::split()
+void STree::extend_tree(int char_index) {
+    if (!(ends_in_node(new_ext, new_end))) {
+        split_edge(new_ext, char_index);
+        new_ext = new_ext->parent;
+        was_extended_old = true;
+    }
+    Node* new_node = new Node(new_ext, char_index, end_ind);
+    add_child(new_ext, new_node);
+    prev_ext = new_node;
+}
+
+void STree::remove_child(Node* parent, Node* child_to_remove) {
+    int key = get_key(child_to_remove, child_to_remove->start_ind);
+    parent->children.erase(key);
+}
+
+void STree::split_edge(Node* node, int char_index) {
+    Node* new_node = new Node(node->parent, node->start_ind, new int(char_index));
+
+    remove_child(node->parent, node);
+    add_child(node->parent, new_node);
+
+    node->parent = new_node;
+    node->start_ind = char_index + 1;
+    add_child(new_node, node);
+}
 
 int main() {
-    STree tree("word");
+    STree tree("xabxa");
     std::cout << "END!" << std::endl;
 }
