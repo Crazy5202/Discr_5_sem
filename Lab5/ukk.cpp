@@ -93,12 +93,12 @@ bool STree::ends_in_node(Node* ext, int ext_end) {
     return ext_end == *ext->end_ind;
 }
 
-bool STree::continues_with_char(Node* ext, int tree_index, int end) {
+bool STree::continues_with_char(Node* ext, int tree_index, int ext_end) {
   char ch = get_char(tree_index);
   bool terminal(ch == '$');
-  return (ends_in_node(ext, end) && get_child(ext, tree_index) != NULL)
-    || (!ends_in_node(ext, end) && get_char(end + 1) == ch
-      && (!terminal || end + 1 == tree_index));
+  return (ends_in_node(ext, ext_end) && get_child(ext, tree_index) != NULL) // доходит до конца дуги и есть выходящий путь с подх. буквой
+    || (!ends_in_node(ext, ext_end) && get_char(ext_end + 1) == ch // заканчивается в середине дуги и 
+      && (!terminal || ext_end + 1 == tree_index));
 }
 
 STree::STree(std::string _text) : text(_text+'$') {
@@ -137,7 +137,7 @@ int STree::SEA(int j, int i) {
 
     std::pair<Node*, int> res;
     if (search_node == root) res = skip_count(root, j, i);
-    else res = skip_count(search_node, search_start, search_end);
+    else res = skip_count(search_node->suffix_link, search_start, search_end);
 
     new_ext = res.first;
     new_end = res.second;
@@ -206,6 +206,6 @@ void STree::split_edge(Node* node, int char_index) {
 }
 
 int main() {
-    STree tree("xabxa");
+    STree tree("abcabxabcd");
     std::cout << "END!" << std::endl;
 }
