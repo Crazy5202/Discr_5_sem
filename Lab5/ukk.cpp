@@ -62,17 +62,19 @@ private:
 
 STree::STree(std::string _text) : text(_text+'$') {
     end_ind = new int(0);
-    root = new Node(nullptr, 0, end_ind);
-    j_i = 0;
-    prev_ext = new Node(root, 0, end_ind);
+    root = new Node(nullptr, 1, end_ind);
+    prev_ext = new Node(root, 1, end_ind);
     add_child(root, prev_ext);
+    j_i = 1;
+    (*end_ind)++;
     for (int i=1; i < text.length();++i) {
         SPA(i);
     }
 }
 
 void STree::add_child(Node* parent, Node* child) {
-    parent->children[text[child->start_ind]] = child;
+    int key = get_key(child, child->start_ind);
+    parent->children[key] = child;
 }
 
 void STree::SPA(int i) {
@@ -105,18 +107,6 @@ bool STree::continues_with_char(Node* ext, int tree_index, int end) {
       && (!terminal || end + 1 == tree_index));
 }
 
-Node* STree::walk_up(int& search_start, int& search_end) {
-    if (ends_in_node(prev_ext, prev_end) && prev_ext->suffix_link != nullptr) {
-        search_start = *prev_ext->end_ind;
-        search_end = *prev_ext->end_ind - 1;
-        return prev_ext;
-    } else {
-        search_start = prev_ext->start_ind;
-        search_end = prev_end;
-        return prev_ext->parent;
-    }
-}
-
 int STree::SEA(int j, int i) {
     bool three_applied = false;
     int search_start, search_end;
@@ -128,6 +118,7 @@ int STree::SEA(int j, int i) {
 
     new_ext = res.first;
     new_end = res.second;
+    was_extended_new = false;
     if (!(new_ext->children.empty() and ends_in_node(new_ext, new_end)) 
     and !(continues_with_char(new_ext, i+1, new_end))) {
         extend_tree(i+1);
@@ -139,7 +130,20 @@ int STree::SEA(int j, int i) {
 
     prev_ext = new_ext;
     prev_end = new_end;
+    was_extended_old = was_extended_new;
     return three_applied;
+}
+
+Node* STree::walk_up(int& search_start, int& search_end) {
+    if (ends_in_node(prev_ext, prev_end) && prev_ext->suffix_link != nullptr) {
+        search_start = *prev_ext->end_ind;
+        search_end = *prev_ext->end_ind - 1;
+        return prev_ext;
+    } else {
+        search_start = prev_ext->start_ind;
+        search_end = prev_end;
+        return prev_ext->parent;
+    }
 }
 
 int STree::get_key(Node* node, int index) {
@@ -174,11 +178,11 @@ void STree::extend_tree(int char_index) {
     if (!(ends_in_node(new_ext, new_end))) {
         split_edge(new_ext, char_index);
         new_ext = new_ext->parent;
-        was_extended_old = true;
+        was_extended_new = true;
     }
     Node* new_node = new Node(new_ext, char_index, end_ind);
     add_child(new_ext, new_node);
-    prev_ext = new_node;
+    new_ext = new_node;
 }
 
 void STree::remove_child(Node* parent, Node* child_to_remove) {
