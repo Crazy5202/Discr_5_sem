@@ -3,6 +3,7 @@
 #include <vector>
 #include <chrono>
 #include <map>
+#include <algorithm>
 
 class Node
 {
@@ -16,9 +17,10 @@ public:
     int start_ind;
     int* end_ind;
     std::map<int, Node*> children;
+    int suf_ind;
 };
 
-Node::Node(Node* _parent, int _start_ind, int* _end_ind) : parent(_parent), start_ind(_start_ind), end_ind(_end_ind) {
+Node::Node(Node* _parent, int _start_ind, int* _end_ind) : parent(_parent), start_ind(_start_ind), end_ind(_end_ind), suf_ind(0) {
     suffix_link = nullptr;
 }
 
@@ -30,7 +32,7 @@ class STree
 {
 public:
     STree(std::string _text);
-    void find(std::string word);
+    std::vector<int> find(std::string string);
 private:
     void SPA(int i); // алгоритм одной фазы
     int SEA(int j, int i); // алгоритм одного продолжения фазы
@@ -47,6 +49,11 @@ private:
 
     Node* get_child(Node* node, int char_index);
     Node* walk_up(int& search_start, int& search_end);
+
+    std::pair<Node*, int> match_string(std::string& string);
+    std::vector<int> retrieve_leaves(std::pair<Node*, int>& suffix);
+    void get_children(Node* node, std::vector<Node*>& ret_children);
+    Node* get_char_child(Node* node, char ch);
     
     Node* root;
     int* end_ind; // глобальный индекс конца суффикса i для листов
@@ -94,12 +101,12 @@ bool STree::ends_in_node(Node* ext, int ext_end) {
 }
 
 bool STree::continues_with_char(Node* ext, int tree_index, int ext_end) {
-  char ch = get_char(tree_index);
-  bool terminal(ch == '$');
-  return (ends_in_node(ext, ext_end) && get_child(ext, tree_index) != NULL) // доходит до конца дуги и есть выходящий путь с подх. буквой
-    || (!ends_in_node(ext, ext_end) && get_char(ext_end + 1) == ch // заканчивается в середине дуги и 
-      && (!terminal || ext_end + 1 == tree_index));
-}
+    char ch = get_char(tree_index);
+    bool terminal(ch == '$');
+    return (ends_in_node(ext, ext_end) && get_child(ext, tree_index) != NULL) // доходит до конца дуги и есть выходящий путь с подх. буквой
+        || (!ends_in_node(ext, ext_end) && get_char(ext_end + 1) == ch // заканчивается в середине дуги и 
+        && (!terminal || ext_end + 1 == tree_index));
+    }
 
 STree::STree(std::string _text) : text(_text+'$') {
     end_ind = new int(0);
@@ -107,11 +114,12 @@ STree::STree(std::string _text) : text(_text+'$') {
     last_leaf = new Node(root, 1, end_ind);
     add_child(root, last_leaf);
     j_i = 1;
+    last_leaf->suf_ind = j_i;
     (*end_ind)++;
     for (int i=1; i < text.length();++i) {
         SPA(i);
     }
-    std::cout << "END!";
+    //std::cout << "END!";
 }
 
 void STree::SPA(int i) {
@@ -192,6 +200,7 @@ void STree::extend_tree(int char_index) {
     Node* new_node = new Node(new_ext, char_index, end_ind);
     add_child(new_ext, new_node);
     last_leaf = new_node;
+    last_leaf->suf_ind = j_i+1;
 }
 
 void STree::split_edge(Node* node, int char_index) {
@@ -205,7 +214,87 @@ void STree::split_edge(Node* node, int char_index) {
     add_child(new_node, node);
 }
 
+Node* STree::get_char_child(Node* node, char ch) {
+    std::map<int, Node*>::iterator it = node->children.find(ch * (-1));
+    if (it != node->children.end())
+        return it->second;
+    else
+        return NULL;
+}
+
+//Match a string from the root of the tree
+std::pair<Node*, int> STree::match_string(std::string& string) {
+    int char_index;
+    Node* current_node = root;
+    while (!string.empty()) {
+        current_node = get_char_child(current_node, string[0]);
+        if (current_node == NULL) {
+            return std::make_pair<Node*, int>(NULL, 0);
+        } else {
+            char_index = current_node->start_ind-1;
+            int i = 1;
+            for (; i < string.length() && i < current_node->get_length(); ++i) {
+                if (string[i] != text[char_index + i]) {
+                    return std::make_pair<Node*, int>(NULL, 0);
+                }
+            }    
+            string.erase(0, i);
+        }
+    }
+    return std::make_pair(current_node, char_index);
+}
+
+std::vector<int> STree::find(std::string string) {
+    std::pair<Node*,int> suffix = match_string(string);
+    if (suffix.first == NULL) {
+        return std::vector<int>();
+    } else {
+        std::vector<int> res = retrieve_leaves(suffix);
+        std::sort(res.begin(), res.end());
+        return res;
+    }
+}
+
+//depth first tree traversal to gather leaf IDs below a given suffix
+std::vector<int> STree::retrieve_leaves(std::pair<Node*, int>& suffix) {
+    std::vector<int> leaf_IDs;
+    std::vector<Node*> nodes_to_visit (1, suffix.first);
+    while (!nodes_to_visit.empty()) {
+        Node* current_node = nodes_to_visit.back();
+        nodes_to_visit.pop_back();
+        if (current_node->children.empty()) {
+            leaf_IDs.push_back(current_node->suf_ind);
+        } else {
+            get_children(current_node, nodes_to_visit);
+        }
+    }
+    return leaf_IDs;
+}
+
+void STree::get_children(Node* node, std::vector<Node*>& ret_children) {
+    std::map<int, Node*>::const_iterator it = node->children.begin();
+    for (; it != node->children.end(); it++) {
+        ret_children.push_back(it->second);
+    }
+}
+
+void print_vec(int& word_ind, std::vector<int> vals) {
+    std::cout << "1: ";
+    std::cout << vals[0];
+    for (int i=1; i<vals.size(); ++i) {
+        std::cout << ", " << vals[i];
+    }
+    std::cout << '\n';
+}
+
 int main() {
-    STree tree("abcabxabcd");
-    std::cout << "END!" << std::endl;
+    std::string inp;
+    std::cin >> inp;
+    STree tree(inp);
+    int counter = 1;
+    while (std::cin >> inp) {
+        print_vec(counter, tree.find(inp));
+        ++counter;
+    }
+    //std::cout << "END!" << std::endl;
 }
