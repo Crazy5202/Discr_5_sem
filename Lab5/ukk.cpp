@@ -1,7 +1,6 @@
 #include <iostream>
-#include <fstream>
 #include <vector>
-#include <chrono>
+//#include <chrono>
 #include <map>
 #include <algorithm>
 
@@ -11,13 +10,14 @@ public:
     Node(Node* _parent, int _start_ind, int* _end_ind);
 
     int get_length();
+    bool is_leaf();
 
     Node* parent;
     Node* suffix_link;
-    int start_ind;
-    int* end_ind;
-    std::map<int, Node*> children;
-    int suf_ind;
+    int start_ind; // индекс начала дуги, входящей в вершину
+    int* end_ind; // индекс конца дуги, входящей в вершину
+    std::map<char, Node*> children;
+    int suf_ind; // индекс продолжения, на котором был добавлен лист (0 для не-листа)
 };
 
 Node::Node(Node* _parent, int _start_ind, int* _end_ind) : parent(_parent), start_ind(_start_ind), end_ind(_end_ind), suf_ind(0) {
@@ -28,42 +28,46 @@ int Node::get_length() {
     return (*end_ind - start_ind + 1);
 }
 
+bool Node::is_leaf() {
+    return children.empty();
+}
+
 class STree
 {
 public:
     STree(std::string _text);
     std::vector<int> find(std::string string);
 private:
-    void SPA(int i); // алгоритм одной фазы
-    int SEA(int j, int i); // алгоритм одного продолжения фазы
-    void extend_tree(int char_index); // правило 2 - разбиение дуги
-    std::pair<Node*, int> skip_count(Node* start_node, int start, int end); // приём 1 - пропуск дуг в зависимости от длин
-
-    void add_child(Node* parent, Node* child);
+    // геттеры и т.д.
     char get_char(int index);
+    Node* get_child(Node* node, int char_index);
+    void add_child(Node* parent, Node* child);
+    void remove_child(Node* parent, Node* child_to_remove);
+    // логические условия
     bool ends_in_node(Node* node, int end);
     bool continues_with_char(Node* node, int tree_index, int end);
-    int get_key(int index);
-    void remove_child(Node* parent, Node* child_to_remove);
-    void split_edge(Node* node, int char_index);
-
-    Node* get_child(Node* node, int char_index);
+    // основные компоненты Укконена
+    void SPA(int i);
+    int SEA(int j, int i);
     Node* walk_up(int& search_start, int& search_end);
-
+    std::pair<Node*, int> skip_count(Node* start_node, int start, int end); 
+    void extend_tree(int char_index); 
+    void split_edge(Node* node, int char_index);
+    // функции поиска
     std::pair<Node*, int> match_string(std::string& string);
     std::vector<int> retrieve_leaves(std::pair<Node*, int>& suffix);
     void get_children(Node* node, std::vector<Node*>& ret_children);
     Node* get_char_child(Node* node, char ch);
     
     Node* root;
-    int* end_ind; // глобальный индекс конца суффикса i для листов
     std::string text;
-    Node* last_leaf;
-    Node* prev_ext; // указатель на последнее продолжение
-    int prev_end; // конец суффикса на предыдущей фазе
+    int* end_ind; // глобальный индекс конца дуги для листов в текущей фазе
+    Node* last_leaf; // последнее явное продолжение - из него делаем явные продолжения с j_i+1
+    Node* prev_ext; // указатель на последнее явное продолжение
     Node* new_ext;
+    int prev_end; // конец прошлого явного продолжения
     int new_end;
-    bool was_extended_old; // было ли продолжение на прошлом шаге
+    bool was_extended_old; // было ли продолжение на шаге
     bool was_extended_new;
     int j_i; // индекс последнего продолжения, в котором не применялось правило 3 - окончание в дуге
 };
@@ -72,14 +76,10 @@ char STree::get_char(int index) {
     return text[index-1];
 }
 
-int STree::get_key(int index) {
-    char ch = get_char(index);
-    return (ch != '$' ? ch * (-1) : index);
-}
 
 Node* STree::get_child(Node* node, int char_index) {
-    int key = get_key(char_index);
-    std::map<int, Node*>::iterator it = node->children.find(key);
+    char key = get_char(char_index);
+    std::map<char, Node*>::iterator it = node->children.find(key);
     if (it != node->children.end())
         return it->second;
     else
@@ -87,20 +87,20 @@ Node* STree::get_child(Node* node, int char_index) {
 }
 
 void STree::add_child(Node* parent, Node* child) {
-    int key = get_key(child->start_ind);
+    char key = get_char(child->start_ind);
     parent->children[key] = child;
 }
 
 void STree::remove_child(Node* parent, Node* child_to_remove) {
-    int key = get_key(child_to_remove->start_ind);
+    char key = get_char(child_to_remove->start_ind);
     parent->children.erase(key);
 }
 
-bool STree::ends_in_node(Node* ext, int ext_end) {
+bool STree::ends_in_node(Node* ext, int ext_end) { // проверка на то, что продолжение заканчивается в вершине (не в середине дуги)
     return ext_end == *ext->end_ind;
 }
 
-bool STree::continues_with_char(Node* ext, int tree_index, int ext_end) {
+bool STree::continues_with_char(Node* ext, int tree_index, int ext_end) { // проверка на то, что путь из S[j..i] уже продолжается с S(j..i+1)
     char ch = get_char(tree_index);
     bool terminal(ch == '$');
     return (ends_in_node(ext, ext_end) && get_child(ext, tree_index) != NULL) // доходит до конца дуги и есть выходящий путь с подх. буквой
@@ -119,10 +119,9 @@ STree::STree(std::string _text) : text(_text+'$') {
     for (int i=1; i < text.length();++i) {
         SPA(i);
     }
-    //std::cout << "END!";
 }
 
-void STree::SPA(int i) {
+void STree::SPA(int i) { // алгоритм одной фазы
     prev_ext = last_leaf;
     prev_end = *end_ind;
     was_extended_old = false;
@@ -138,7 +137,7 @@ void STree::SPA(int i) {
     }
 }
 
-int STree::SEA(int j, int i) {
+int STree::SEA(int j, int i) { // алгоритм одного продолжения фазы
     bool three_applied = false;
     int search_start, search_end;
     Node* search_node = walk_up(search_start, search_end);
@@ -150,14 +149,14 @@ int STree::SEA(int j, int i) {
     new_ext = res.first;
     new_end = res.second;
     was_extended_new = false;
-    if (!(new_ext->children.empty() and ends_in_node(new_ext, new_end)) // условия 2-го правила (разбиения): мы не в конце листа
-    and !(continues_with_char(new_ext, i+1, new_end))) { // и нет продолжения с данным символом ?????????? -- ДОПОЛНИТЬ
+    if (!(new_ext->is_leaf() and ends_in_node(new_ext, new_end)) // проверка на то, что данного продолжения ещё нет
+    and !(continues_with_char(new_ext, i+1, new_end))) {
         extend_tree(i+1);
     } else { // иначе правило 3 - суффикс уже есть в дереве
         three_applied = true; 
     }
 
-    if (was_extended_old) prev_ext->suffix_link = new_ext;
+    if (was_extended_old) prev_ext->suffix_link = new_ext; // соединяем прошлое и текущее явные продолжения с помощью суффиксной ссылки
 
     prev_ext = new_ext;
     prev_end = new_end;
@@ -165,7 +164,7 @@ int STree::SEA(int j, int i) {
     return three_applied;
 }
 
-Node* STree::walk_up(int& search_start, int& search_end) {
+Node* STree::walk_up(int& search_start, int& search_end) { // подъём от последнего явного продолжения
     if (ends_in_node(prev_ext, prev_end) && prev_ext->suffix_link != nullptr) {
         search_start = *prev_ext->end_ind;
         search_end = *prev_ext->end_ind - 1;
@@ -177,21 +176,20 @@ Node* STree::walk_up(int& search_start, int& search_end) {
     }
 }
 
-std::pair<Node*, int> STree::skip_count(Node* search_node, int search_start, int search_end) {
+std::pair<Node*, int> STree::skip_count(Node* search_node, int search_start, int search_end) { // приём 1 - пропуск дуг в зависимости от длины
     int char_index = *search_node->end_ind;
-
     while (search_start <= search_end) {
         search_node = get_child(search_node, search_start);
-        if (search_node->get_length() < search_end - search_start + 1) // случай 1: мы идём дальше за ноду
+        if (search_node->get_length() < search_end - search_start + 1) // случай 1: мы идём дальше за вершину
             char_index = *search_node->end_ind;
-        else // случай 2: мы уже в нужной ноде
+        else // случай 2: мы уже в нужной вершине
             char_index = search_node->start_ind + (search_end - search_start); 
         search_start+=search_node->get_length();
     }
     return std::make_pair(search_node, char_index);
 }
 
-void STree::extend_tree(int char_index) {
+void STree::extend_tree(int char_index) { // правило 2 - создание нового листа
     if (!(ends_in_node(new_ext, new_end))) {
         split_edge(new_ext, new_end);
         new_ext = new_ext->parent;
@@ -203,7 +201,7 @@ void STree::extend_tree(int char_index) {
     last_leaf->suf_ind = j_i+1;
 }
 
-void STree::split_edge(Node* node, int char_index) {
+void STree::split_edge(Node* node, int char_index) { // разбиение дуги
     Node* new_node = new Node(node->parent, node->start_ind, new int(char_index));
 
     remove_child(node->parent, node);
@@ -215,14 +213,14 @@ void STree::split_edge(Node* node, int char_index) {
 }
 
 Node* STree::get_char_child(Node* node, char ch) {
-    std::map<int, Node*>::iterator it = node->children.find(ch * (-1));
+    std::map<char, Node*>::iterator it = node->children.find(ch * (-1));
     if (it != node->children.end())
         return it->second;
     else
         return NULL;
 }
 
-//Match a string from the root of the tree
+// 
 std::pair<Node*, int> STree::match_string(std::string& string) {
     int char_index;
     Node* current_node = root;
@@ -255,14 +253,14 @@ std::vector<int> STree::find(std::string string) {
     }
 }
 
-//depth first tree traversal to gather leaf IDs below a given suffix
+// поиск в глубину для получения индексов
 std::vector<int> STree::retrieve_leaves(std::pair<Node*, int>& suffix) {
     std::vector<int> leaf_IDs;
     std::vector<Node*> nodes_to_visit (1, suffix.first);
     while (!nodes_to_visit.empty()) {
         Node* current_node = nodes_to_visit.back();
         nodes_to_visit.pop_back();
-        if (current_node->children.empty()) {
+        if (current_node->is_leaf()) {
             leaf_IDs.push_back(current_node->suf_ind);
         } else {
             get_children(current_node, nodes_to_visit);
@@ -272,14 +270,14 @@ std::vector<int> STree::retrieve_leaves(std::pair<Node*, int>& suffix) {
 }
 
 void STree::get_children(Node* node, std::vector<Node*>& ret_children) {
-    std::map<int, Node*>::const_iterator it = node->children.begin();
+    std::map<char, Node*>::const_iterator it = node->children.begin();
     for (; it != node->children.end(); it++) {
         ret_children.push_back(it->second);
     }
 }
 
-void print_vec(int& word_ind, std::vector<int> vals) {
-    std::cout << "1: ";
+void print_vec(int word_ind, std::vector<int>& vals) { // функция печати результатов
+    std::cout << word_ind << ": ";
     std::cout << vals[0];
     for (int i=1; i<vals.size(); ++i) {
         std::cout << ", " << vals[i];
@@ -289,12 +287,16 @@ void print_vec(int& word_ind, std::vector<int> vals) {
 
 int main() {
     std::string inp;
-    std::cin >> inp;
+    getline(std::cin, inp);
     STree tree(inp);
     int counter = 1;
-    while (std::cin >> inp) {
-        print_vec(counter, tree.find(inp));
+    while (getline(std::cin, inp)) {
+        if (inp.size()!=0) {
+            std::vector<int> res_vec = tree.find(inp);
+            if (res_vec.size() != 0) {
+                print_vec(counter, res_vec);
+            }
+        }
         ++counter;
     }
-    //std::cout << "END!" << std::endl;
 }
