@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-//#include <chrono>
+#include <chrono>
 #include <map>
 #include <algorithm>
 
@@ -282,7 +282,11 @@ void print_vec(int word_ind, std::vector<int>& vals) { // функция печ�
 int main() {
     std::string inp;
     getline(std::cin, inp);
+    //auto start = std::chrono::steady_clock::now();
     STree tree(inp);
+    //auto end = std::chrono::steady_clock::now();
+    //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    //std::cout << "Program took " << duration.count() << " milliseconds to execute" << std::endl;
     int counter = 1;
     while (getline(std::cin, inp)) {
         if (inp.size()!=0) { // проверка, что вводимая строка не пустая
