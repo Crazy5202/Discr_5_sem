@@ -101,10 +101,9 @@ bool STree::ends_in_node(Node* ext, int ext_end) { // проверка на то
 bool STree::continues_with_char(Node* ext, int ext_end, int cont_index) { // проверка на то, что путь из S[j..i] уже продолжается с S(j..i+1)
     char cont_char = get_char(cont_index);
     bool terminal(cont_char == '$');
-    return (ends_in_node(ext, ext_end) and get_child(ext, cont_char) != NULL) // доходит в вершину и из неё есть дуга с добавляемой буквой
-        or (!ends_in_node(ext, ext_end) and get_char(ext_end + 1) == cont_char // заканчивается в середине дуги и в этой же дуге есть дуга с добавляемой буквой
-        and (!terminal or ext_end + 1 == cont_index));
-    }
+    return ((ends_in_node(ext, ext_end) and get_child(ext, cont_char) != NULL) // доходит в вершину и из неё есть дуга с добавляемой буквой
+        or (!ends_in_node(ext, ext_end) and get_char(ext_end + 1) == cont_char)); // заканчивается в середине дуги и в этой же дуге есть дуга с добавляемой буквой
+}
 
 STree::STree(std::string _text) : text(_text+'$') {
     end_ind = new int(0);
