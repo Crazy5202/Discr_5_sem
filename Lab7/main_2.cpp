@@ -2,6 +2,7 @@
 #include <vector>
 #include <list>
 #include <algorithm>
+#include <chrono>
 
 class Graph {
 public:
@@ -97,6 +98,7 @@ std::vector<size_t> Graph::top_sort() {
         set_white(i);
     }
     has_cycle = false;
+    result.clear();
     for (int i=1; i<=size; ++i) {
         if (is_white(i)) {
             dfs_visit(i);
@@ -109,6 +111,7 @@ std::vector<size_t> Graph::top_sort() {
 }
 
 int main() {
+    //auto start = std::chrono::steady_clock::now();
     size_t n, m;
     std::cin >> n >> m;
     Graph graph(n);
@@ -124,5 +127,7 @@ int main() {
             std::cout << res[i-1] << ' ' << res[i] << '\n';
         }
     }
-    //std::cout << "END!" << std::endl;
+    //auto end = std::chrono::steady_clock::now();
+    //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    //std::cout << "Program took " << duration.count() << " microseconds to execute" << std::endl;
 }
