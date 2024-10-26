@@ -10,11 +10,14 @@ public:
     std::stack<size_t> topog_sort();
 private:
     std::list<size_t> get_edges(size_t);
+
     int get_state(size_t);
     void set_state(size_t, int);
+
     bool is_white(size_t);
     bool is_grey(size_t);
     bool is_black(size_t);
+
     void set_white(size_t);
     void set_grey(size_t);
     void set_black(size_t);
@@ -91,13 +94,26 @@ std::stack<size_t> Graph::topog_sort() {
                 continue;
             }
             
-            visited.push(cur_vert);
-
-            set_grey(cur_vert);
-            
             auto vert_edges = get_edges(cur_vert);
+
+            std::vector<size_t> cur_adj;
+
             for (auto it = vert_edges.begin(); it!=vert_edges.end(); ++it) {
-                to_visit.push(*it);
+                if (!(is_black(*it))) {
+                    cur_adj.push_back(*it);
+                }
+            }
+            if (!cur_adj.empty()) {
+                for (auto elem: cur_adj) {
+                    to_visit.push(elem);
+                }
+
+                visited.push(cur_vert);
+                set_grey(cur_vert);
+
+            } else {
+                set_black(cur_vert);
+                blacked.push(cur_vert);
             }
         }
         while (!visited.empty()) {
