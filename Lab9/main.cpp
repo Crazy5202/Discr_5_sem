@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <list>
-//#include <chrono>
+#include <chrono>
 #include <queue>
 
 size_t max_val = (size_t)-1;
@@ -93,7 +93,7 @@ size_t Graph::djikstra(size_t start, size_t finish) {
 }
 
 int main() {
-    //auto start = std::chrono::steady_clock::now();
+    auto begin = std::chrono::steady_clock::now();
     size_t n, m, start, finish;
     std::cin >> n >> m >> start >> finish;
     Graph graph(n);
@@ -107,7 +107,7 @@ int main() {
     else {
         std::cout << res << '\n'; 
     }
-    //auto end = std::chrono::steady_clock::now();
-    //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    //std::cout << "Program took " << duration.count() << " microseconds to execute" << std::endl;
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+    std::cout << "Program took " << duration.count() << " microseconds to execute" << std::endl;
 }
