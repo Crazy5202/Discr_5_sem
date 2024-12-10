@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-//#include <chrono>
+#include <chrono>
 #include <unordered_map>
 
 class Node {
@@ -73,19 +73,19 @@ void Tree::update_internal(int node, int tl, int tr, int idx, int val, int versi
         cords[node].versions[version].val += val;
         int tm = (tl+tr)/2;
         if (tl <= idx and idx <= tm) {
-                cords[node].versions[version].left++;
-                cords[2*node].versions.push_back(cords[2*node].versions.back());
+            cords[node].versions[version].left++;
+            cords[2*node].versions.push_back(cords[2*node].versions.back());
             update_internal(2*node, tl, tm, idx, val, cords[node].versions[version].left);
         } else {
-                cords[node].versions[version].right++;
-                cords[2*node+1].versions.push_back(cords[2*node+1].versions.back());
+            cords[node].versions[version].right++;
+            cords[2*node+1].versions.push_back(cords[2*node+1].versions.back());
             update_internal(2*node+1, tm+1, tr, idx, val, cords[node].versions[version].right);
         }
     }
 }
 
 void Tree::update(int idx, int val) {
-        cords[1].versions.push_back(cords[1].versions.back());
+    cords[1].versions.push_back(cords[1].versions.back());
     update_internal(1, 0, n-1, idx, val, cords[1].versions.size()-1);
 }
 
@@ -94,7 +94,7 @@ struct Event {
 };
 
 int main() {
-    //auto begin = std::chrono::steady_clock::now();
+    auto begin = std::chrono::steady_clock::now();
     
     std::ios::sync_with_stdio(0);
     std::cin.tie(0);
@@ -158,8 +158,8 @@ int main() {
         std::cout << tree.query(pos_x, pos_y) << std::endl;
     }
 
-    //auto end = std::chrono::steady_clock::now();
-    //auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
-    //std::cout << "Program took " << duration.count() << " seconds to execute" << std::endl;
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    std::cout << "Program took " << duration.count() << " milliseconds to execute" << std::endl;
    return 0;
 }
