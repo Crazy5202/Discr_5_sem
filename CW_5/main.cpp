@@ -86,14 +86,14 @@ int main(int argc, char* argv[]) {
         return (a.u.y == b.u.y) ? (a.t < b.t) : (a.u.y > b.u.y);
     });
 
-    Tree<Event, Event> t;
-    std::vector<Tree<Event, Event>> versions(1, t);
+    Tree<Event> t;
+    std::vector<Tree<Event>> versions(1, t);
     for (auto& event: events) {
         auto last_ver = versions.back();
         if(event.t == End)
             last_ver = last_ver.remove(event);
         else
-            last_ver = last_ver.insert(event, event);
+            last_ver = last_ver.insert(event);
         versions.push_back(last_ver);
     }
 
@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
         auto items = versions[pos].items();
         std::vector<Event> current_events;
         for (auto& pair: items) {
-            current_events.push_back(pair.first);
+            current_events.push_back(pair);
         }
         auto it_event = std::upper_bound(current_events.begin(), current_events.end(), query_event, func);
         if(it_event != current_events.end() && it_event->t == Right) results.push_back(std::to_string(it_event->index));

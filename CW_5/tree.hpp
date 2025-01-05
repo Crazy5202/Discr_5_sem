@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-#pragma once
 #include <map>
 #include <cassert>
 #include <memory>
@@ -13,8 +12,7 @@
 #include <boost/optional.hpp>
 
 template<
-  typename Key,
-  typename T>
+  typename Key>
 class Tree {
  private:
   struct Node;
@@ -24,17 +22,13 @@ class Tree {
   typedef std::shared_ptr<const Entry> entry_ptr_type;
 
   typedef Key key_type;
-  typedef T   mapped_type;
-  typedef std::pair<Key, T> value_type;
 
   struct Entry {
-    Entry(const key_type& key, const mapped_type& value) :
-      key(key),
-      value(value)
+    Entry(const key_type& key) :
+      key(key)
     {}
 
     const key_type key;
-    const mapped_type value;
   };
 
   struct Node : std::enable_shared_from_this<const Node> {
@@ -49,15 +43,14 @@ class Tree {
       right(right)
     {}
 
-    Node(const bool red, const key_type& key, const mapped_type& value) :
+    Node(const bool red, const key_type& key) :
       red(red),
-      entry(std::make_shared<const Entry>(key, value))
+      entry(std::make_shared<const Entry>(key))
     {}
 
    public:
-    inline auto copyWithEntry(const key_type& key,
-        const mapped_type& value) const {
-      const auto new_entry = std::make_shared<const Entry>(key, value);
+    inline auto copyWithEntry(const key_type& key) const {
+      const auto new_entry = std::make_shared<const Entry>(key);
       return std::make_shared<const Node>(red, new_entry, left, right);
     }
 
@@ -79,10 +72,10 @@ class Tree {
 
    public:
     static std::pair<node_ptr_type, bool> insert(const node_ptr_type& node,
-        const key_type& key, const mapped_type& value) {
+        const key_type& key) {
       if (node) {
         if (key < node->entry->key) {
-          const auto [new_left, is_new_key] = insert(node->left, key, value);
+          const auto [new_left, is_new_key] = insert(node->left, key);
           const auto new_node = node->copyWithLeft(new_left);
           if (is_new_key) {
             return std::make_pair(new_node->balance(), is_new_key);
@@ -91,7 +84,7 @@ class Tree {
           }
 
         } else if (key > node->entry->key) {
-          const auto [new_right, is_new_key] = insert(node->right, key, value);
+          const auto [new_right, is_new_key] = insert(node->right, key);
           const auto new_node = node->copyWithRight(new_right);
           if (is_new_key) {
             return std::make_pair(new_node->balance(), is_new_key);
@@ -100,11 +93,11 @@ class Tree {
           }
 
         } else {
-          const auto new_node = node->copyWithEntry(key, value);
+          const auto new_node = node->copyWithEntry(key);
           return std::make_pair(new_node, false);
         }
       } else {
-        const auto new_node = std::make_shared<const Node>(true, key, value);
+        const auto new_node = std::make_shared<const Node>(true, key);
         return std::make_pair(new_node, true);
       }
     }
@@ -554,8 +547,8 @@ class Tree {
   {}
 
  public:
-  Tree insert(const key_type& key, const mapped_type& value) const {
-    const auto [mb_new_root, is_new_key] = Node::insert(root_, key, value);
+  Tree insert(const key_type& key) const {
+    const auto [mb_new_root, is_new_key] = Node::insert(root_, key);
     const auto new_root = mb_new_root->copyAsBlack(); // mb = maybe black
     const auto new_size = size_ + (is_new_key ? 1 : 0);
     return Tree(new_root, new_size);
@@ -572,7 +565,7 @@ class Tree {
     }
   }
 
-  boost::optional<value_type> get(const key_type& key) const {
+  boost::optional<key_type> get(const key_type& key) const {
     auto cur = root_;
     while (cur) {
       if (key < cur->entry->key) {
@@ -580,14 +573,14 @@ class Tree {
       } else if (key > cur->entry->key) {
         cur = cur->right;
       } else {
-        return std::make_pair(cur->entry->key, cur->entry->value);
+        return cur->entry->key;
       }
     }
     return boost::none;
   }
 
-  std::map<key_type, mapped_type> items() const {
-    std::map<key_type, mapped_type> out;
+  std::vector<key_type> items() const {
+    std::vector<key_type> out;
     auto node = root_;
     auto s = std::stack<node_ptr_type>();
     while (!s.empty() || node) {
@@ -597,7 +590,7 @@ class Tree {
       } else {
         node = s.top();
         s.pop();
-        out.emplace(node->entry->key, node->entry->value);
+        out.push_back(node->entry->key);
         node = node->right;
       }
     }
@@ -624,3 +617,7 @@ class Tree {
   node_ptr_type root_;
   std::size_t size_;
 };
+
+// int main() {
+  
+// }

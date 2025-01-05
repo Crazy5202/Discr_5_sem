@@ -26,6 +26,10 @@ public:
 
     Event(vec u, vec v, Type t, int i) : u(u), v(v), t(t), index(i) {}
 
+    bool operator==(const Event& other) const {
+        return (other.u == u and other.v == v and other.t == t and other.index == index);
+    }
+
     bool operator<(const Event& other) const {
         if (t != Point && other.t != Point) { // Compare two segments
             if (u == other.u) // If their top points are the same, check rotation
@@ -48,6 +52,6 @@ public:
     }
 
     bool operator>(const Event& other) const {
-        return !(*this < other);
+        return (!(other == *this) and !(*this < other));
     }
 };
