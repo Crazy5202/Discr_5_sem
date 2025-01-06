@@ -579,6 +579,20 @@ class Tree {
     return boost::none;
   }
 
+  boost::optional<key_type> upper_bound(const key_type& key) const {
+    boost::optional<key_type> result = boost::none;
+    auto cur = root_;
+    while (cur) {
+        if (key < cur->entry->key) {
+            result = cur->entry->key;  
+            cur = cur->left;          
+        } else {
+            cur = cur->right;
+        }
+    }
+    return result;
+}
+
   std::vector<key_type> items() const {
     std::vector<key_type> out;
     auto node = root_;
@@ -617,7 +631,3 @@ class Tree {
   node_ptr_type root_;
   std::size_t size_;
 };
-
-// int main() {
-  
-// }
