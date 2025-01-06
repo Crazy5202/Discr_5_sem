@@ -125,30 +125,6 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
                 delete new_edge; // Delete the dummy edge
             }
         }
-        for (Event event : events[x]) { // Process GET events again to handle edge cases
-            if (event.type != GET) continue; // Skip non-GET events
-            if (ans[event.pos] != nullptr && (ans[event.pos]->left.x == ans[event.pos]->right.x)) continue; // Skip if the result is already a vertical edge
-            edge* new_edge = new edge; // Create a dummy edge for the query point
-            new_edge->left = new_edge->right = queries[event.pos]; // Set the endpoints of the dummy edge
-            auto it = edges.upper_bound(new_edge); // Find the edge above the query point
-            delete new_edge; // Delete the dummy edge
-            if (it == edges.begin()) new_edge = nullptr; // If no edge is below the query point
-            else new_edge = *(--it); // Set the result to the edge below the query point
-            if (ans[event.pos] == nullptr) { // If no result has been set yet
-                ans[event.pos] = new_edge; // Set the result to the edge below the query point
-                continue;
-            }
-            if (new_edge == nullptr) continue; // Skip if no edge is below the query point
-            if (new_edge == ans[event.pos]) continue; // Skip if the result is already set
-            if (mapped_x[ans[event.pos]->right.x] == x) { // If the result edge ends at the current x-coordinate
-                if (mapped_x[new_edge->left.x] == x) { // If the new edge starts at the current x-coordinate
-                    if (new_edge->left.y > ans[event.pos]->right.y) ans[event.pos] = new_edge; // Set the result to the higher edge
-                }
-            } 
-            else { // If the result edge does not end at the current x-coordinate
-                ans[event.pos] = new_edge; // Set the result to the new edge
-            }
-        }
     }
     return ans; // Return the results
 }
