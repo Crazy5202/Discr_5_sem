@@ -131,13 +131,13 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
 
 // Define a structure for a Doubly Connected Edge List (DCEL)
 struct DCEL {
-    struct edge { // Define a structure for an edge in the DCEL
+    struct DCEL_EDGE { // Define a structure for an edge in the DCEL
         PT origin; // Origin vertex of the edge
-        edge* nxt = nullptr; // Pointer to the next edge in the face
-        edge* twin = nullptr; // Pointer to the twin edge
+        DCEL_EDGE* nxt = nullptr; // Pointer to the next edge in the face
+        DCEL_EDGE* twin = nullptr; // Pointer to the twin edge
         int face; // Face associated with the edge
     };
-    std::vector<edge*> body; // Vector to store all edges in the DCEL
+    std::vector<DCEL_EDGE*> body; // Vector to store all edges in the DCEL
 };
 
 // Function to perform point location queries on a DCEL
@@ -165,6 +165,7 @@ std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<PT> que
         }
         std::cout << pos[(intptr_t)res[i]] << '\n'; // Output the face associated with the result
     }
+    for (auto edge : planar.body) delete edge; // Free the memory allocated for the edges
     for (auto edge : planar2) delete edge; // Free the memory allocated for the edges
     return ans; // Return the results
 }
@@ -176,11 +177,11 @@ int32_t main() {
     for (int i = 0; i < q; i++) { // Process each polygon
     	int n; std::cin >> n; // Read the number of vertices in the polygon
     	std::vector<PT> p(n); // Vector to store the vertices
-    	std::vector<DCEL::edge*> edges(n); // Vector to store the edges
+    	std::vector<DCEL::DCEL_EDGE*> edges(n); // Vector to store the edges
     	for (int j = 0; j < n; j++) { // Process each vertex
     		std::cin >> p[j].x >> p[j].y; // Read the coordinates of the vertex
-    		edges[j] = new DCEL::edge; // Create a new edge
-    		edges[j]-> twin = new DCEL::edge; // Create the twin edge
+    		edges[j] = new DCEL::DCEL_EDGE; // Create a new edge
+    		edges[j]-> twin = new DCEL::DCEL_EDGE; // Create the twin edge
     	}
     	for (int j = 0; j < n; j++) { // Connect the edges
     		edges[j]->origin = p[j]; // Set the origin of the edge
