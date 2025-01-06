@@ -1,7 +1,8 @@
-#include<bits/stdc++.h>
-using namespace std;
-
-const int N = 3e5 + 9;
+#include <set>
+#include <iostream>
+#include <vector>
+#include <functional>
+#include <map>
 
 // you are given a planar subdivision without no vertices of degree one and zero,
 // and a lot of queries. Each query is a point, for which we should determine 
@@ -13,7 +14,6 @@ bool ge(const ll& a, const ll& b) { return a >= b; }
 bool le(const ll& a, const ll& b) { return a <= b; }
 bool eq(const ll& a, const ll& b) { return a == b; }
 bool gt(const ll& a, const ll& b) { return a > b; }
-bool lt(const ll& a, const ll& b) { return a < b; }
 int sign(const ll& x) { return le(x, 0) ? eq(x, 0) ? 0 : -1 : 1; }
 struct PT {
     ll x, y;
@@ -44,10 +44,10 @@ struct Event {
         return type < event.type;
     }
 };
-vector<edge*> sweepline(vector<edge*> planar, vector<PT> queries) {
+std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
     using pt_type = decltype(PT::x);
     // collect all x-coordinates
-    auto s = set<pt_type, std::function<bool(const pt_type&, const pt_type&)>>(lt);
+    std::set<pt_type> s;
     for (PT p : queries) s.insert(p.x);
     for (edge* e : planar) {
         s.insert(e->l.x);
@@ -55,16 +55,16 @@ vector<edge*> sweepline(vector<edge*> planar, vector<PT> queries) {
     }
     // map all x-coordinates to ids
     int cid = 0;
-    auto id = map<pt_type, int, std::function<bool(const pt_type&, const pt_type&)>>(lt);
+    std::map<pt_type, int> id;
     for (auto x : s) id[x] = cid++;
     // create events
-    auto t = set<edge*, decltype(*edge_cmp)>(edge_cmp);
-    auto vert_cmp = [](const pair<pt_type, int>& l,const pair<pt_type, int>& r) {
-        if (!eq(l.first, r.first)) return lt(l.first, r.first);
+    auto t = std::set<edge*, decltype(*edge_cmp)>(edge_cmp);
+    auto vert_cmp = [](const std::pair<pt_type, int>& l,const std::pair<pt_type, int>& r) {
+        if (!eq(l.first, r.first)) return l.first < r.first;
         return l.second < r.second;
     };
-    auto vert = set<pair<pt_type, int>, decltype(vert_cmp)>(vert_cmp);
-    vector<vector<Event>> events(cid);
+    auto vert = std::set<std::pair<pt_type, int>, decltype(vert_cmp)>(vert_cmp);
+    std::vector<std::vector<Event>> events(cid);
     for (int i = 0; i < (int)queries.size(); i++) {
         int x = id[queries[i].x];
         events[x].push_back(Event{GET, i});
@@ -72,8 +72,8 @@ vector<edge*> sweepline(vector<edge*> planar, vector<PT> queries) {
     for (int i = 0; i < (int)planar.size(); i++) {
         int lx = id[planar[i]->l.x], rx = id[planar[i]->r.x];
         if (lx > rx) {
-            swap(lx, rx);
-            swap(planar[i]->l, planar[i]->r);
+            std::swap(lx, rx);
+            std::swap(planar[i]->l, planar[i]->r);
         }
         if (lx == rx) {
             events[lx].push_back(Event{VERT, i});
@@ -84,7 +84,7 @@ vector<edge*> sweepline(vector<edge*> planar, vector<PT> queries) {
         }
     }
     // perform sweep line algorithm
-    vector<edge*> ans(queries.size(), nullptr);
+    std::vector<edge*> ans(queries.size(), nullptr);
     for (int x = 0; x < cid; x++) {
         sort(events[x].begin(), events[x].end());
         vert.clear();
@@ -93,17 +93,17 @@ vector<edge*> sweepline(vector<edge*> planar, vector<PT> queries) {
                 t.erase(planar[event.pos]);
             }
             if (event.type == VERT) {
-                vert.insert(make_pair(min(planar[event.pos]->l.y, planar[event.pos]->r.y), event.pos));
+                vert.insert(std::make_pair(std::min(planar[event.pos]->l.y, planar[event.pos]->r.y), event.pos));
             }
             if (event.type == ADD) {
                 t.insert(planar[event.pos]);
             }
             if (event.type == GET) {
-                auto jt = vert.upper_bound(make_pair(queries[event.pos].y, planar.size()));
+                auto jt = vert.upper_bound(std::make_pair(queries[event.pos].y, planar.size()));
                 if (jt != vert.begin()) {
                     --jt;
                     int i = jt->second;
-                    if (ge(max(planar[i]->l.y, planar[i]->r.y), queries[event.pos].y)) {
+                    if (ge(std::max(planar[i]->l.y, planar[i]->r.y), queries[event.pos].y)) {
                         ans[event.pos] = planar[i];
                         continue;
                     }
@@ -159,15 +159,15 @@ struct DCEL {
         edge* twin = nullptr;
         int face;
     };
-    vector<edge*> body;
+    std::vector<edge*> body;
 };
-// For each query a pair (1,i) is returned if the point lies 
-// strictly inside the face number i, and a pair (0,i) is returned 
+// For each query a std::pair (1,i) is returned if the point lies 
+// strictly inside the face number i, and a std::pair (0,i) is returned 
 // if the point lies on the edge number i.
-vector<pair<int, int>> point_location(DCEL planar, vector<PT> queries) {
-    vector<pair<int, int>> ans(queries.size());
-    vector<edge*> planar2;
-    map<intptr_t, int> pos;
+std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<PT> queries) {
+    std::vector<std::pair<int, int>> ans(queries.size());
+    std::vector<edge*> planar2;
+    std::map<intptr_t, int> pos;
     int n = planar.body.size();
     for (int i = 0; i < n; i++) {
         if (planar.body[i]->face > planar.body[i]->twin->face) continue;
@@ -175,7 +175,7 @@ vector<pair<int, int>> point_location(DCEL planar, vector<PT> queries) {
         e->l = planar.body[i]->origin;
         e->r = planar.body[i]->twin->origin;
         pos[(intptr_t)e] =
-            lt(planar.body[i]->origin.x, planar.body[i]->twin->origin.x)
+            planar.body[i]->origin.x < planar.body[i]->twin->origin.x
             ? planar.body[i]->face
             : planar.body[i]->twin->face;
         planar2.push_back(e);
@@ -192,16 +192,14 @@ vector<pair<int, int>> point_location(DCEL planar, vector<PT> queries) {
     return ans;
 }
 int32_t main() {
-    ios_base::sync_with_stdio(0);
-    cin.tie(0);
-    int q; cin >> q;
+    int q; std::cin >> q;
     DCEL planar;
     for (int i = 0; i < q; i++) {
-    	int n; cin >> n;
-    	vector<PT> p(n);
-    	vector<DCEL::edge*> e(n);
+    	int n; std::cin >> n;
+    	std::vector<PT> p(n);
+    	std::vector<DCEL::edge*> e(n);
     	for (int j = 0; j < n; j++) {
-    		cin >> p[j].x >> p[j].y;
+    		std::cin >> p[j].x >> p[j].y;
     		e[j] = new DCEL::edge;
     		e[j]-> twin = new DCEL::edge;
     	}
@@ -220,10 +218,10 @@ int32_t main() {
     		planar.body.push_back(e[i]->twin);
     	}
     }
-    int n; cin >> n;
-    vector<PT> Q(n);
+    int n; std::cin >> n;
+    std::vector<PT> Q(n);
     for (int i = 0; i < n; i++) {
-    	cin >> Q[i].x >> Q[i].y;
+    	std::cin >> Q[i].x >> Q[i].y;
     }
     auto ret = point_location(planar, Q);
     return 0;
