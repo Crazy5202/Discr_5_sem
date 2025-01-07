@@ -3,28 +3,73 @@
 #include "tree.hpp"
 #include "reader.hpp"
 
-bool func(const Event& a, const Event& b) {
-    // The horizontal ordering of the events of the sweepline. Events that intersect to the left
-    // are considered less than points on the right on the scanline, and as a tiebreaker,
-    // left segments are smaller than points are smaller than right segments
-    if(a.t != Point && b.t != Point) { // We compare two segments
-        if(a.u == b.u) // If their top points are the same, check rotation
-            return (b.v-b.u)%(a.v-b.u) < 0;
-        if(a.u.y == b.u.y) // If the top points are on the same level, compare x coordinate
-            return a.u.x < b.u.x;
-        else if(b.u.y > a.u.y)
-            // If segment b is above a, the highest point of segment
-            // a needs to be in the left halfspace it defines, for a to be smaller
-            return (b.v-b.u)%(a.u-b.u) < 0;
-        return !func(b, a);
-    } else if(a.t == Point && b.t != Point) { // We compare a point and segment
-        // A point compares less if it's in the left halfspace of the segment it compares to
-        if((a.u-b.u)%(b.v-b.u) == 0) // If it straddles, check if segment is horizontal
-            return (b.u.y == b.v.y) ? (a.u.x <= b.v.x) : (c[a.t] < c[b.t]);
-        else
-            return (b.v-b.u)%(a.u-b.u) < 0;
+void create_versions(const std::vector<edge>& planar, std::vector<Tree<edge>>& versions, std::map<val_type, int>& mapped_x) {
+    std::vector<val_type> all_x; // Set to store unique x-coordinates
+    for (auto& e : planar) { // Insert x-coordinates from planar edges
+        all_x.push_back(e.left.x);
+        all_x.push_back(e.right.x);
     }
-    return !func(b, a);
+    std::sort(all_x.begin(), all_x.end());
+    all_x.erase(std::unique(all_x.begin(), all_x.end()), all_x.end());
+    for (int i=0; i<all_x.size(); ++i) {
+        mapped_x[all_x[i]] = i;
+    }
+    
+}
+
+// Function to perform the sweep line algorithm
+std::vector<int> sweepline(std::vector<edge> planar, std::vector<PT> queries) {
+    // Collect all x-coordinates from the queries and planar edges
+    std::set<val_type> all_x; // Set to store unique x-coordinates
+    for (edge& e : planar) { // Insert x-coordinates from planar edges
+        all_x.insert(e.left.x);
+        all_x.insert(e.right.x);
+    }
+    // Map all x-coordinates to unique IDs
+    int id_counter = 0; // Counter for assigning IDs
+    std::map<val_type, int> mapped_x; // Map to store x-coordinates and their IDs
+    for (auto x : all_x) mapped_x[x] = id_counter++; // Assign IDs to x-coordinates
+    // Create events for the sweep line algorithm
+    auto edges = std::set<edge, decltype(*edge_cmp)>(edge_cmp); // Set to store active edges
+    std::vector<std::vector<Event>> events(id_counter); // Vector to store events for each x-coordinate
+    for (int i = 0; i < (int)queries.size(); i++) { // Create GET events for queries
+        int x = mapped_x[queries[i].x]; // Get the ID of the x-coordinate
+        events[x].push_back(Event{GET, i}); // Add GET event for the query
+    }
+    for (int i = 0; i < (int)planar.size(); i++) { // Create ADD, DEL, and VERT events for planar edges
+        int lx = mapped_x[planar[i].left.x], rx = mapped_x[planar[i].right.x]; // Get IDs of the edge endpoints
+        if (lx > rx) { // Ensure lx is the left endpoint
+            std::swap(lx, rx);
+            std::swap(planar[i].left, planar[i].right);
+        }
+        if (lx == rx) { // If the edge is vertical
+            continue;
+        } 
+        else { // If the edge is not vertical
+            events[lx].push_back(Event{ADD, i}); // Add ADD event at the left endpoint
+            events[rx].push_back(Event{DEL, i}); // Add DEL event at the right endpoint
+        }
+    }
+    // Perform the sweep line algorithm
+    std::vector<int> ans(queries.size(), -1); // Vector to store the results
+    for (int x = 0; x < id_counter; x++) { // Process events in order of x-coordinates
+        sort(events[x].begin(), events[x].end()); // Sort events by type
+        for (Event event : events[x]) { // Process each event
+            if (event.type == DEL) { // If the event is a DEL event
+                edges.erase(planar[event.pos]); // Remove the edge from the active set
+            }
+            if (event.type == ADD) { // If the event is an ADD event
+                edges.insert(planar[event.pos]); // Add the edge to the active set
+            }
+            if (event.type == GET) { // If the event is a GET event
+                edge new_edge; // Create a dummy edge for the query point
+                new_edge.left = new_edge.right = queries[event.pos]; // Set the endpoints of the dummy edge
+                auto it = edges.upper_bound(new_edge); // Find the edge above the query point
+                if (it != edges.begin()) ans[event.pos] = (*(--it)).face; // Set the result to the edge below the query point
+            }
+        }
+    }
+    return ans; // Return the results
 }
 
 int main(int argc, char* argv[]) {
@@ -50,85 +95,30 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::vector<std::vector<vec>> polygons;
-    std::vector<vec> queries;
+    std::vector<edge> planar;
+    std::vector<PT> queries;
 
     try {
-        polygons = readIndex(indexFile);
+        planar = readIndex(indexFile);
         queries = readInput(inputFile);
     } catch (const std::exception& e) {
         std::cerr << "Ошибка: " << e.what() << '\n';
         return 1;
     }
 
-    std::vector<Event> events;
+    std::vector<Tree<edge>> versions;
+    std::map<val_type, int> mapped_x;
 
-    int cur_polygon = 0;
-    for (auto& polygon: polygons) {
-        for (int i=0; i<polygon.size(); ++i) {
-            vec a = polygon[i], b = polygon[(i+1)%polygon.size()];
-            // Make sure point a is above a, and check if the segment is part of the left or right
-            // side of a polygon
-            if(a.y <= b.y) {
-                if(a.y == b.y && a.x < b.x) // Horizontal segments are considered right
-                    std::swap(a, b);
-                events.push_back({ b, a, Right, cur_polygon });
-                events.push_back({ a, b, End, cur_polygon });
-            } else if(a.y > b.y) {
-                events.push_back({ a, b, Left, cur_polygon });
-                events.push_back({ b, a, End, cur_polygon });
-            }
-        }
-        ++cur_polygon;
-    }
+    create_versions(planar, versions, mapped_x);
 
-    std::sort(events.begin(), events.end(), [] (const Event& a, const Event& b) {
-        return (a.u.y == b.u.y) ? (a.t < b.t) : (a.u.y > b.u.y);
-    });
+    // try {
+    //     writeOutput(outputFile, results);
 
-    Tree<Event> t;
-    std::vector<Tree<Event>> versions(1, t);
-    for (auto& event: events) {
-        auto last_ver = versions.back();
-        if(event.t == End)
-            last_ver = last_ver.remove(event);
-        else
-            last_ver = last_ver.insert(event);
-        versions.push_back(last_ver);
-    }
-
-    std::vector<std::string> results;
-
-    for (auto query: queries) {
-        Event query_event(query, query, Point, 0);
-        auto it_ver = std::upper_bound(events.begin(), events.end(), query_event, [] (const Event& a, const Event& b) {
-            return (a.u.y == b.u.y) ? (a.t < b.t) : (a.u.y > b.u.y);
-        });
-        if (it_ver == events.begin() or it_ver == events.end()) {
-            results.push_back("-1");
-            continue;
-        }
-        auto pos = it_ver - events.begin();
-        auto items = versions[pos].items();
-        std::vector<Event> current_events;
-        for (auto& pair: items) {
-            current_events.push_back(pair);
-        }
-        auto it_event = std::upper_bound(current_events.begin(), current_events.end(), query_event, func);
-        if(it_event != current_events.end() && it_event->t == Right) results.push_back(std::to_string(it_event->index));
-        else {
-            results.push_back("-1");
-        }
-    }
-
-    try {
-        writeOutput(outputFile, results);
-
-        std::cout << "Программа успешно завершена.\n";
-    } catch (const std::exception& e) {
-        std::cerr << "Ошибка: " << e.what() << '\n';
-        return 1;
-    }
+    //     std::cout << "Программа успешно завершена.\n";
+    // } catch (const std::exception& e) {
+    //     std::cerr << "Ошибка: " << e.what() << '\n';
+    //     return 1;
+    // }
 
     return 0;
 }
