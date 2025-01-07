@@ -5,39 +5,48 @@
 
 #include "my_planar.hpp"
 
-std::vector<std::vector<vec>> readIndex(const std::string& filePath) {
+std::vector<edge> readIndex(const std::string& filePath) {
+
     std::ifstream file(filePath);
     if (!file.is_open()) {
         throw std::runtime_error("Не удалось открыть файл: " + filePath);
     }
 
-    std::vector<std::vector<vec>> polygons;
-    int n;
+    std::vector<edge> planar; // Vector to store the planar subdivision
+
+    int n, counter = 0;
 
     while (file >> n) {
-        std::vector<vec> polygon;
-        for (int i = 0; i < n; ++i) {
-            vec point;
-            int ind;
-            file >> point.x;
-            file >> point.y;
-            polygon.push_back(point);
-        }
-        polygons.push_back(polygon);
+    	std::vector<PT> p(n); // Vector to store the vertices
+        std::vector<edge> edges(n); // Vector to store the edges
+    	for (int j = 0; j < n; j++) { // Process each vertex
+    		std::cin >> p[j].x >> p[j].y; // Read the coordinates of the vertex
+    	}
+        for (int j = 0; j < n; j++) { // Process each vertex
+            edges[j].left = p[j];
+            edges[j].right = p[(j + 1) % n];
+            if (edges[j].left.x < edges[j].right.x) {
+                edges[j].face = counter;
+            } else if (edges[j].left.x > edges[j].right.x) {
+                edges[j].face = -1;
+            }
+    	}
+    	for (int j = 0; j < n; j++) { // Add the edges to the DCEL
+    		planar.push_back(edges[j]);
+    	}
     }
 
-    return polygons;
+    return planar;
 }
 
-std::vector<vec> readInput(const std::string& filePath) {
+std::vector<PT> readInput(const std::string& filePath) {
     std::ifstream file(filePath);
     if (!file.is_open()) {
         throw std::runtime_error("Не удалось открыть файл: " + filePath);
     }
 
-    std::vector<vec> points;
-    vec point;
-    int ind;
+    std::vector<PT> points;
+    PT point;
     while (file >> point.x >> point.y) {
         points.push_back(point);
     }
@@ -45,13 +54,13 @@ std::vector<vec> readInput(const std::string& filePath) {
     return points;
 }
 
-void writeOutput(const std::string& filePath, const std::vector<std::string>& results) {
+void writeOutput(const std::string& filePath, const std::vector<int>& results) {
     std::ofstream file(filePath, std::ios::out);
     if (!file.is_open()) {
         throw std::runtime_error("Не удалось открыть файл: " + filePath);
     }
 
     for (const auto& result : results) {
-        file << result << '\n';
+        file << std::to_string(result) << '\n';
     }
 }

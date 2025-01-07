@@ -1,57 +1,51 @@
-#pragma once
-
-#include <vector>
-#include <algorithm>
-#include <stdio.h>
 #include <set>
+#include <iostream> 
+#include <vector>
+#include <functional> 
+#include <map> 
 
-using val_type = double;
-val_type n, m, x, y, k;
+typedef double val_type; // Define val_type as double for coordinate values
 
-struct vec {
-    val_type x, y;
-    val_type operator% (const vec& v) { return x*v.y - y*v.x; }
-    vec operator- (const vec& v) const { return { x-v.x, y-v.y }; }
-    bool operator== (const vec& v) const { return x == v.x && y == v.y; }
+// Function to determine the sign of a value
+int sign(const val_type& x) { return (x <= 0) ? (x == 0) ? 0 : -1 : 1; }
+
+// Define a structure for a 2D point
+struct PT {
+    val_type x, y; // Coordinates of the point
+    PT() {} // Default constructor
+    PT(val_type _x, val_type _y) : x(_x), y(_y) {} // Parameterized constructor
+    PT operator-(const PT& a) const { return PT(x - a.x, y - a.y); } // Subtract two points
+    val_type dot(const PT& a) const { return x * a.x + y * a.y; } // Dot product of two points
+    val_type dot(const PT& a, const PT& b) const { return (a - *this).dot(b - *this); } // Dot product relative to this point
+    val_type cross(const PT& a) const { return x * a.y - y * a.x; } // Cross product of two points
+    val_type cross(const PT& a, const PT& b) const { return (a - *this).cross(b - *this); } // Cross product relative to this point
+    bool operator == (const PT& a) const { return a.x == x && a.y == y; } // Equality operator for points
 };
 
-enum Type { Left, Right, Point, End };
-int c[4] = { 0, 2, 1, 3 }; // The sort order of the above types used for tiebreaking
+// Define a structure for an edge
+struct edge {
+    PT left, right; // Left and right endpoints of the edge
+    int face;
+};
 
-class Event {
-public:
-    vec u, v; // Top and bottom points of the event, if applicable
-    Type t;   // The type of the event
-    int index;  // The associated segment, if not a point
+// Function to compare two edges based on their orientation
+bool edge_cmp(const edge& edge1, const edge& edge2) {
+    const PT a = edge1.left, b = edge1.right; // Endpoints of the first edge
+    const PT c = edge2.left, d = edge2.right; // Endpoints of the second edge
+    int val = sign(a.cross(b, c)) + sign(a.cross(b, d)); // Determine the relative orientation
+    if (val != 0) return val > 0; // Return true if the first edge is above the second
+    val = sign(c.cross(d, a)) + sign(c.cross(d, b)); // Determine the relative orientation
+    return val < 0; // Return true if the first edge is below the second
+}
 
-    Event(vec u, vec v, Type t, int i) : u(u), v(v), t(t), index(i) {}
+// Define an enumeration for event types
+enum EventType {DEL = 1, ADD = 2, GET = 0};
 
-    bool operator==(const Event& other) const {
-        return (other.u == u and other.v == v and other.t == t and other.index == index);
-    }
-
-    bool operator<(const Event& other) const {
-        if (t != Point && other.t != Point) { // Compare two segments
-            if (u == other.u) // If their top points are the same, check rotation
-                return (other.v - other.u) % (v - other.u) < 0;
-            if (u.y == other.u.y) // If the top points are on the same level, compare x coordinate
-                return u.x < other.u.x;
-            else if (other.u.y > u.y)
-                // If segment other is above, the highest point of segment
-                // this needs to be in the left halfspace it defines, for this to be smaller
-                return (other.v - other.u) % (u - other.u) < 0;
-            return !(other < *this);
-        } else if (t == Point && other.t != Point) { // Compare a point and a segment
-            // A point compares less if it's in the left halfspace of the segment it compares to
-            if ((u - other.u) % (other.v - other.u) == 0) // If it straddles, check if segment is horizontal
-                return (other.u.y == other.v.y) ? (u.x <= other.v.x) : (c[t] < c[other.t]);
-            else
-                return (other.v - other.u) % (u - other.u) < 0;
-        }
-        return !(other < *this);
-    }
-
-    bool operator>(const Event& other) const {
-        return (!(other == *this) and !(*this < other));
+// Define a structure for an event
+struct Event {
+    EventType type; // Type of the event
+    int pos; // Position associated with the event
+    bool operator < (const Event& event) const { // Comparison operator for events
+        return type < event.type;
     }
 };
