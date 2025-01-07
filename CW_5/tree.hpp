@@ -630,4 +630,5 @@ class Tree {
  private:
   node_ptr_type root_;
   std::size_t size_;
+  node_ptr_type min_node;
 };

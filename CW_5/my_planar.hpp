@@ -1,8 +1,4 @@
-#include <set>
-#include <iostream> 
-#include <vector>
-#include <functional> 
-#include <map> 
+
 
 typedef double val_type; // Define val_type as double for coordinate values
 
@@ -45,7 +41,7 @@ public:
 
     // Equality operator for edges
     bool operator == (const edge& other) const { 
-        return left == other.left and right == other.right and face == other.face; 
+        return left == other.left and right == other.right; 
     } 
     // Overloaded < operator for comparing two edges
     bool operator<(const edge& other) const {
@@ -62,7 +58,7 @@ public:
 };
 
 // Define an enumeration for event types
-enum EventType {DEL = 1, ADD = 2, GET = 0};
+enum EventType {DEL = 0, ADD = 1};
 
 // Define a structure for an event
 class Event {

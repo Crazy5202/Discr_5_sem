@@ -3,8 +3,7 @@
 #include "tree.hpp"
 #include "reader.hpp"
 
-void create_versions(const std::vector<edge>& planar, std::vector<Tree<edge>>& versions, std::map<val_type, int>& mapped_x) {
-    std::vector<val_type> all_x; // Set to store unique x-coordinates
+void create_versions(const std::vector<edge>& planar, std::vector<Tree<edge>>& versions, std::vector<val_type>& all_x, std::unordered_map<val_type, int>& mapped_x) {
     for (auto& e : planar) { // Insert x-coordinates from planar edges
         all_x.push_back(e.left.x);
         all_x.push_back(e.right.x);
@@ -23,6 +22,7 @@ void create_versions(const std::vector<edge>& planar, std::vector<Tree<edge>>& v
         events[rx].push_back(Event{DEL, i}); // Add DEL event at the right endpoint
     }
     for (auto& current_events: events) {
+        std::sort(current_events.begin(), current_events.end()); // Sort events by type
         for (auto& event: current_events) {
             auto last_ver = versions.back();
             if (event.type == DEL) { // If the event is a DEL event
@@ -34,30 +34,32 @@ void create_versions(const std::vector<edge>& planar, std::vector<Tree<edge>>& v
             versions.push_back(last_ver);
         }
     }
+
 }
 
 // Function to perform the sweep line algorithm
-std::vector<int> sweepline(std::vector<edge> planar, std::vector<PT> queries) {
+std::vector<int> sweepline(std::vector<PT>& queries, std::vector<Tree<edge>>& versions, std::vector<val_type>& all_x, std::unordered_map<val_type, int>& mapped_x) {
     // Perform the sweep line algorithm
-    std::vector<int> ans(queries.size(), -1); // Vector to store the results
-    // for (int x = 0; x < id_counter; x++) { // Process events in order of x-coordinates
-    //     sort(events[x].begin(), events[x].end()); // Sort events by type
-    //     for (Event event : events[x]) { // Process each event
-    //         if (event.type == DEL) { // If the event is a DEL event
-    //             edges.erase(planar[event.pos]); // Remove the edge from the active set
-    //         }
-    //         if (event.type == ADD) { // If the event is an ADD event
-    //             edges.insert(planar[event.pos]); // Add the edge to the active set
-    //         }
-    //         if (event.type == GET) { // If the event is a GET event
-    //             edge new_edge; // Create a dummy edge for the query point
-    //             new_edge.left = new_edge.right = queries[event.pos]; // Set the endpoints of the dummy edge
-    //             auto it = edges.upper_bound(new_edge); // Find the edge above the query point
-    //             if (it != edges.begin()) ans[event.pos] = (*(--it)).face; // Set the result to the edge below the query point
-    //         }
-    //     }
-    // }
-    return ans; // Return the results
+    std::vector<int> results; // Vector to store the results
+
+    for (auto query: queries) {
+        auto it_ver = std::upper_bound(all_x.begin(), all_x.end(), query.x);
+        if (it_ver == all_x.begin() or it_ver == all_x.end()) {
+            results.push_back(-1);
+            continue;
+        }
+        auto pos = it_ver - all_x.begin();
+        auto items = versions[pos].items();
+        edge dummy_edge; // Create a dummy edge for the query point
+        dummy_edge.left = dummy_edge.right = query;
+        auto it_elem = std::upper_bound(items.begin(), items.end(), dummy_edge);
+        if(it_elem != items.begin()) results.push_back((*(--it_elem)).face);
+        else {
+            results.push_back(-1);
+        }
+    }
+    
+    return results; // Return the results
 }
 
 int main(int argc, char* argv[]) {
@@ -95,18 +97,23 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<Tree<edge>> versions;
-    std::map<val_type, int> mapped_x;
+    std::unordered_map<val_type, int> mapped_x;
+    std::vector<val_type> all_x;
 
-    create_versions(planar, versions, mapped_x);
+    create_versions(planar, versions, all_x, mapped_x);
 
-    // try {
-    //     writeOutput(outputFile, results);
+    planar.clear();
 
-    //     std::cout << "Программа успешно завершена.\n";
-    // } catch (const std::exception& e) {
-    //     std::cerr << "Ошибка: " << e.what() << '\n';
-    //     return 1;
-    // }
+    auto results = sweepline(queries, versions, all_x, mapped_x);
+
+    try {
+        writeOutput(outputFile, results);
+
+        std::cout << "Программа успешно завершена.\n";
+    } catch (const std::exception& e) {
+        std::cerr << "Ошибка: " << e.what() << '\n';
+        return 1;
+    }
 
     return 0;
 }
