@@ -112,72 +112,29 @@ std::vector<int> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
     return ans; // Return the results
 }
 
-// Define a structure for a Doubly Connected Edge List (DCEL)
-struct DCEL {
-    struct DCEL_EDGE { // Define a structure for an edge in the DCEL
-        PT origin; // Origin vertex of the edge
-        DCEL_EDGE* nxt = nullptr; // Pointer to the next edge in the face
-        DCEL_EDGE* twin = nullptr; // Pointer to the twin edge
-        int face; // Face associated with the edge
-    };
-    std::vector<DCEL_EDGE*> body; // Vector to store all edges in the DCEL
-};
-
-// Function to perform point location queries on a DCEL
-std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<PT> queries) {
-    std::vector<std::pair<int, int>> ans(queries.size()); // Vector to store the results
-    std::vector<edge*> planar2; // Vector to store edges for the sweep line algorithm
-    int n = planar.body.size(); // Number of edges in the DCEL
-    for (int i = 0; i < n; i++) { // Process each edge in the DCEL
-        if (planar.body[i]->face > planar.body[i]->twin->face) continue; // Skip if the edge is already processed
-        edge* new_edge = new edge; // Create a new edge for the sweep line algorithm
-        new_edge->left = planar.body[i]->origin; // Set the left endpoint of the edge
-        new_edge->right = planar.body[i]->twin->origin; // Set the right endpoint of the edge
-        new_edge->face = // Map the edge to the appropriate face
-            planar.body[i]->origin.x < planar.body[i]->twin->origin.x
-            ? planar.body[i]->face
-            : planar.body[i]->twin->face;
-        planar2.push_back(new_edge); // Add the edge to the vector
-    }
-    auto res = sweepline(planar2, queries); // Perform the sweep line algorithm
-    for (int i = 0; i < (int)queries.size(); i++) { // Process the results
-        if (res[i] == -1) { // If no result was found
-            std::cout << "-1" << '\n'; // Output -1
-            continue;
-        }
-        std::cout << res[i] << '\n'; // Output the face associated with the result
-    }
-    for (auto edge : planar.body) free(edge); // Free the memory allocated for the edges
-    for (auto edge : planar2) free(edge); // Free the memory allocated for the edges
-    return ans; // Return the results
-}
-
 // Main function
-int32_t main() {
+int main() {
     int q; std::cin >> q; // Read the number of polygons
-    DCEL planar; // Create a DCEL to store the planar subdivision
+    std::vector<edge*> planar; // Vector to store the planar subdivision
     for (int i = 0; i < q; i++) { // Process each polygon
     	int n; std::cin >> n; // Read the number of vertices in the polygon
     	std::vector<PT> p(n); // Vector to store the vertices
-    	std::vector<DCEL::DCEL_EDGE*> edges(n); // Vector to store the edges
+        std::vector<edge*> edges(n); // Vector to store the edges
     	for (int j = 0; j < n; j++) { // Process each vertex
     		std::cin >> p[j].x >> p[j].y; // Read the coordinates of the vertex
-    		edges[j] = new DCEL::DCEL_EDGE; // Create a new edge
-    		edges[j]-> twin = new DCEL::DCEL_EDGE; // Create the twin edge
     	}
-    	for (int j = 0; j < n; j++) { // Connect the edges
-    		edges[j]->origin = p[j]; // Set the origin of the edge
-    		edges[j]->nxt = edges[(j + 1) % n]; // Set the next edge in the face
-    		edges[j]->face = i; // Set the face associated with the edge
-    		auto rev = edges[j]->twin; // Get the twin edge
-    		rev->origin = p[(j + 1) % n]; // Set the origin of the twin edge
-    		rev->face = -1; // Set the face of the twin edge to the outer face
-    		rev->nxt = edges[(j - 1 + n) % n] -> twin; // Set the next edge in the twin face
-    		rev->twin = edges[j]; // Set the twin of the twin edge
+        for (int j = 0; j < n; j++) { // Process each vertex
+    		edges[j] = new edge; // Create a new edge
+            edges[j]->left = p[j];
+            edges[j]->right = p[(j + 1) % n];
+            if (edges[j]->left.x < edges[j]->right.x) {
+                edges[j]->face = i;
+            } else if (edges[j]->left.x > edges[j]->right.x) {
+                edges[j]->face = -1;
+            }
     	}
     	for (int i = 0; i < n; i++) { // Add the edges to the DCEL
-    		planar.body.push_back(edges[i]);
-    		planar.body.push_back(edges[i]->twin);
+    		planar.push_back(edges[i]);
     	}
     }
     int n; std::cin >> n; // Read the number of queries
@@ -185,6 +142,10 @@ int32_t main() {
     for (int i = 0; i < n; i++) { // Process each query
     	std::cin >> Q[i].x >> Q[i].y; // Read the coordinates of the query point
     }
-    auto ret = point_location(planar, Q); // Perform point location queries
+    auto res = sweepline(planar, Q); // Perform point location queries
+    for (int i = 0; i < res.size(); i++) { // Process the results
+        std::cout << res[i] << '\n'; // Output the face associated with the result
+    }
+    for (auto edge : planar) free(edge);
     return 0; // Return 0 to indicate successful execution
 }
