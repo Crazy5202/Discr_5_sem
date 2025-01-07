@@ -4,11 +4,6 @@
 #include <functional> // Include the functional library for using std::function
 #include <map> // Include the map library for using std::map
 
-// Define a planar subdivision without vertices of degree one and zero,
-// and handle multiple queries. Each query is a point, and we need to determine
-// the face of the subdivision it belongs to. This solution is offline.
-// For doubles, change the compare methods and the point type.
-// Complexity: O(log n) per query
 typedef double val_type; // Define val_type as double for coordinate values
 
 // Function to determine the sign of a value
@@ -34,9 +29,9 @@ struct edge {
 };
 
 // Function to compare two edges based on their orientation
-bool edge_cmp(edge* edge1, edge* edge2) {
-    const PT a = edge1->left, b = edge1->right; // Endpoints of the first edge
-    const PT c = edge2->left, d = edge2->right; // Endpoints of the second edge
+bool edge_cmp(const edge& edge1, const edge& edge2) {
+    const PT a = edge1.left, b = edge1.right; // Endpoints of the first edge
+    const PT c = edge2.left, d = edge2.right; // Endpoints of the second edge
     int val = sign(a.cross(b, c)) + sign(a.cross(b, d)); // Determine the relative orientation
     if (val != 0) return val > 0; // Return true if the first edge is above the second
     val = sign(c.cross(d, a)) + sign(c.cross(d, b)); // Determine the relative orientation
@@ -44,7 +39,7 @@ bool edge_cmp(edge* edge1, edge* edge2) {
 }
 
 // Define an enumeration for event types
-enum EventType { DEL = 1, ADD = 2, GET = 0};
+enum EventType {DEL = 1, ADD = 2, GET = 0};
 
 // Define a structure for an event
 struct Event {
@@ -56,30 +51,31 @@ struct Event {
 };
 
 // Function to perform the sweep line algorithm
-std::vector<int> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
+std::vector<int> sweepline(std::vector<edge> planar, std::vector<PT> queries) {
     // Collect all x-coordinates from the queries and planar edges
     std::set<val_type> all_x; // Set to store unique x-coordinates
-    for (PT p : queries) all_x.insert(p.x); // Insert x-coordinates from queries
-    for (edge* e : planar) { // Insert x-coordinates from planar edges
-        all_x.insert(e->left.x);
-        all_x.insert(e->right.x);
+    for (PT p : queries) 
+        all_x.insert(p.x); // Insert x-coordinates from queries
+    for (edge& e : planar) { // Insert x-coordinates from planar edges
+        all_x.insert(e.left.x);
+        all_x.insert(e.right.x);
     }
     // Map all x-coordinates to unique IDs
     int id_counter = 0; // Counter for assigning IDs
     std::map<val_type, int> mapped_x; // Map to store x-coordinates and their IDs
     for (auto x : all_x) mapped_x[x] = id_counter++; // Assign IDs to x-coordinates
     // Create events for the sweep line algorithm
-    auto edges = std::set<edge*, decltype(*edge_cmp)>(edge_cmp); // Set to store active edges
+    auto edges = std::set<edge, decltype(*edge_cmp)>(edge_cmp); // Set to store active edges
     std::vector<std::vector<Event>> events(id_counter); // Vector to store events for each x-coordinate
     for (int i = 0; i < (int)queries.size(); i++) { // Create GET events for queries
         int x = mapped_x[queries[i].x]; // Get the ID of the x-coordinate
         events[x].push_back(Event{GET, i}); // Add GET event for the query
     }
     for (int i = 0; i < (int)planar.size(); i++) { // Create ADD, DEL, and VERT events for planar edges
-        int lx = mapped_x[planar[i]->left.x], rx = mapped_x[planar[i]->right.x]; // Get IDs of the edge endpoints
+        int lx = mapped_x[planar[i].left.x], rx = mapped_x[planar[i].right.x]; // Get IDs of the edge endpoints
         if (lx > rx) { // Ensure lx is the left endpoint
             std::swap(lx, rx);
-            std::swap(planar[i]->left, planar[i]->right);
+            std::swap(planar[i].left, planar[i].right);
         }
         if (lx == rx) { // If the edge is vertical
             continue;
@@ -101,11 +97,10 @@ std::vector<int> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
                 edges.insert(planar[event.pos]); // Add the edge to the active set
             }
             if (event.type == GET) { // If the event is a GET event
-                edge* new_edge = new edge; // Create a dummy edge for the query point
-                new_edge->left = new_edge->right = queries[event.pos]; // Set the endpoints of the dummy edge
+                edge new_edge; // Create a dummy edge for the query point
+                new_edge.left = new_edge.right = queries[event.pos]; // Set the endpoints of the dummy edge
                 auto it = edges.upper_bound(new_edge); // Find the edge above the query point
-                if (it != edges.begin()) ans[event.pos] = (*(--it))->face; // Set the result to the edge below the query point
-                delete new_edge; // Delete the dummy edge
+                if (it != edges.begin()) ans[event.pos] = (*(--it)).face; // Set the result to the edge below the query point
             }
         }
     }
@@ -115,22 +110,21 @@ std::vector<int> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
 // Main function
 int main() {
     int q; std::cin >> q; // Read the number of polygons
-    std::vector<edge*> planar; // Vector to store the planar subdivision
+    std::vector<edge> planar; // Vector to store the planar subdivision
     for (int i = 0; i < q; i++) { // Process each polygon
     	int n; std::cin >> n; // Read the number of vertices in the polygon
     	std::vector<PT> p(n); // Vector to store the vertices
-        std::vector<edge*> edges(n); // Vector to store the edges
+        std::vector<edge> edges(n); // Vector to store the edges
     	for (int j = 0; j < n; j++) { // Process each vertex
     		std::cin >> p[j].x >> p[j].y; // Read the coordinates of the vertex
     	}
         for (int j = 0; j < n; j++) { // Process each vertex
-    		edges[j] = new edge; // Create a new edge
-            edges[j]->left = p[j];
-            edges[j]->right = p[(j + 1) % n];
-            if (edges[j]->left.x < edges[j]->right.x) {
-                edges[j]->face = i;
-            } else if (edges[j]->left.x > edges[j]->right.x) {
-                edges[j]->face = -1;
+            edges[j].left = p[j];
+            edges[j].right = p[(j + 1) % n];
+            if (edges[j].left.x < edges[j].right.x) {
+                edges[j].face = i;
+            } else if (edges[j].left.x > edges[j].right.x) {
+                edges[j].face = -1;
             }
     	}
     	for (int i = 0; i < n; i++) { // Add the edges to the DCEL
@@ -146,6 +140,5 @@ int main() {
     for (int i = 0; i < res.size(); i++) { // Process the results
         std::cout << res[i] << '\n'; // Output the face associated with the result
     }
-    for (auto edge : planar) free(edge);
     return 0; // Return 0 to indicate successful execution
 }
