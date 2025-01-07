@@ -30,6 +30,7 @@ struct PT {
 // Define a structure for an edge
 struct edge {
     PT left, right; // Left and right endpoints of the edge
+    int face;
 };
 
 // Function to compare two edges based on their orientation
@@ -55,7 +56,7 @@ struct Event {
 };
 
 // Function to perform the sweep line algorithm
-std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
+std::vector<int> sweepline(std::vector<edge*> planar, std::vector<PT> queries) {
     // Collect all x-coordinates from the queries and planar edges
     std::set<val_type> all_x; // Set to store unique x-coordinates
     for (PT p : queries) all_x.insert(p.x); // Insert x-coordinates from queries
@@ -89,7 +90,7 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
         }
     }
     // Perform the sweep line algorithm
-    std::vector<edge*> ans(queries.size(), nullptr); // Vector to store the results
+    std::vector<int> ans(queries.size(), -1); // Vector to store the results
     for (int x = 0; x < id_counter; x++) { // Process events in order of x-coordinates
         sort(events[x].begin(), events[x].end()); // Sort events by type
         for (Event event : events[x]) { // Process each event
@@ -103,7 +104,7 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
                 edge* new_edge = new edge; // Create a dummy edge for the query point
                 new_edge->left = new_edge->right = queries[event.pos]; // Set the endpoints of the dummy edge
                 auto it = edges.upper_bound(new_edge); // Find the edge above the query point
-                if (it != edges.begin()) ans[event.pos] = *(--it); // Set the result to the edge below the query point
+                if (it != edges.begin()) ans[event.pos] = (*(--it))->face; // Set the result to the edge below the query point
                 delete new_edge; // Delete the dummy edge
             }
         }
@@ -126,14 +127,13 @@ struct DCEL {
 std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<PT> queries) {
     std::vector<std::pair<int, int>> ans(queries.size()); // Vector to store the results
     std::vector<edge*> planar2; // Vector to store edges for the sweep line algorithm
-    std::map<intptr_t, int> pos; // Map to store the face associated with each edge
     int n = planar.body.size(); // Number of edges in the DCEL
     for (int i = 0; i < n; i++) { // Process each edge in the DCEL
         if (planar.body[i]->face > planar.body[i]->twin->face) continue; // Skip if the edge is already processed
         edge* new_edge = new edge; // Create a new edge for the sweep line algorithm
         new_edge->left = planar.body[i]->origin; // Set the left endpoint of the edge
         new_edge->right = planar.body[i]->twin->origin; // Set the right endpoint of the edge
-        pos[(intptr_t)new_edge] = // Map the edge to the appropriate face
+        new_edge->face = // Map the edge to the appropriate face
             planar.body[i]->origin.x < planar.body[i]->twin->origin.x
             ? planar.body[i]->face
             : planar.body[i]->twin->face;
@@ -141,11 +141,11 @@ std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<PT> que
     }
     auto res = sweepline(planar2, queries); // Perform the sweep line algorithm
     for (int i = 0; i < (int)queries.size(); i++) { // Process the results
-        if (res[i] == nullptr) { // If no result was found
+        if (res[i] == -1) { // If no result was found
             std::cout << "-1" << '\n'; // Output -1
             continue;
         }
-        std::cout << pos[(intptr_t)res[i]] << '\n'; // Output the face associated with the result
+        std::cout << res[i] << '\n'; // Output the face associated with the result
     }
     for (auto edge : planar.body) free(edge); // Free the memory allocated for the edges
     for (auto edge : planar2) free(edge); // Free the memory allocated for the edges
