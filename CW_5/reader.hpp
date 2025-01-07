@@ -35,6 +35,7 @@ std::vector<edge> readIndex(const std::string& filePath) {
     	for (int j = 0; j < n; j++) { // Add the edges to the DCEL
     		planar.push_back(edges[j]);
     	}
+        ++counter;
     }
 
     return planar;
