@@ -20,7 +20,7 @@ std::vector<edge> readIndex(const std::string& filePath) {
     	std::vector<PT> p(n); // Vector to store the vertices
         std::vector<edge> edges(n); // Vector to store the edges
     	for (int j = 0; j < n; j++) { // Process each vertex
-    		std::cin >> p[j].x >> p[j].y; // Read the coordinates of the vertex
+    		file >> p[j].x >> p[j].y; // Read the coordinates of the vertex
     	}
         for (int j = 0; j < n; j++) { // Process each vertex
             edges[j].left = p[j];
@@ -28,6 +28,7 @@ std::vector<edge> readIndex(const std::string& filePath) {
             if (edges[j].left.x < edges[j].right.x) {
                 edges[j].face = counter;
             } else if (edges[j].left.x > edges[j].right.x) {
+                std::swap(edges[j].left, edges[j].right);
                 edges[j].face = -1;
             }
     	}
