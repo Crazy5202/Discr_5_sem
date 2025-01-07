@@ -43,7 +43,7 @@ bool edge_cmp(edge* edge1, edge* edge2) {
 }
 
 // Define an enumeration for event types
-enum EventType { DEL = 2, ADD = 3, GET = 1, VERT = 0 };
+enum EventType { DEL = 1, ADD = 2, GET = 0};
 
 // Define a structure for an event
 struct Event {
@@ -69,11 +69,6 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
     for (auto x : all_x) mapped_x[x] = id_counter++; // Assign IDs to x-coordinates
     // Create events for the sweep line algorithm
     auto edges = std::set<edge*, decltype(*edge_cmp)>(edge_cmp); // Set to store active edges
-    auto vert_cmp = [](const std::pair<val_type, int>& left,const std::pair<val_type, int>& right) { // Comparator for vertical edges
-        if (!(left.first == right.first)) return left.first < right.first; // Compare y-coordinates
-        return left.second < right.second; // Compare indices if y-coordinates are equal
-    };
-    auto vert = std::set<std::pair<val_type, int>, decltype(vert_cmp)>(vert_cmp); // Set to store vertical edges
     std::vector<std::vector<Event>> events(id_counter); // Vector to store events for each x-coordinate
     for (int i = 0; i < (int)queries.size(); i++) { // Create GET events for queries
         int x = mapped_x[queries[i].x]; // Get the ID of the x-coordinate
@@ -86,7 +81,7 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
             std::swap(planar[i]->left, planar[i]->right);
         }
         if (lx == rx) { // If the edge is vertical
-            events[lx].push_back(Event{VERT, i}); // Add VERT event
+            continue;
         } 
         else { // If the edge is not vertical
             events[lx].push_back(Event{ADD, i}); // Add ADD event at the left endpoint
@@ -97,27 +92,14 @@ std::vector<edge*> sweepline(std::vector<edge*> planar, std::vector<PT> queries)
     std::vector<edge*> ans(queries.size(), nullptr); // Vector to store the results
     for (int x = 0; x < id_counter; x++) { // Process events in order of x-coordinates
         sort(events[x].begin(), events[x].end()); // Sort events by type
-        vert.clear(); // Clear the set of vertical edges
         for (Event event : events[x]) { // Process each event
             if (event.type == DEL) { // If the event is a DEL event
                 edges.erase(planar[event.pos]); // Remove the edge from the active set
-            }
-            if (event.type == VERT) { // If the event is a VERT event
-                vert.insert(std::make_pair(std::min(planar[event.pos]->left.y, planar[event.pos]->right.y), event.pos)); // Add the vertical edge to the set
             }
             if (event.type == ADD) { // If the event is an ADD event
                 edges.insert(planar[event.pos]); // Add the edge to the active set
             }
             if (event.type == GET) { // If the event is a GET event
-                auto jt = vert.upper_bound(std::make_pair(queries[event.pos].y, planar.size())); // Find the vertical edge above the query point
-                if (jt != vert.begin()) { // If there is a vertical edge below the query point
-                    --jt;
-                    int i = jt->second; // Get the index of the vertical edge
-                    if (std::max(planar[i]->left.y, planar[i]->right.y) >= queries[event.pos].y) { // If the query point is on or below the vertical edge
-                        ans[event.pos] = planar[i]; // Set the result to the vertical edge
-                        continue;
-                    }
-                }
                 edge* new_edge = new edge; // Create a dummy edge for the query point
                 new_edge->left = new_edge->right = queries[event.pos]; // Set the endpoints of the dummy edge
                 auto it = edges.upper_bound(new_edge); // Find the edge above the query point
@@ -165,8 +147,8 @@ std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<PT> que
         }
         std::cout << pos[(intptr_t)res[i]] << '\n'; // Output the face associated with the result
     }
-    for (auto edge : planar.body) delete edge; // Free the memory allocated for the edges
-    for (auto edge : planar2) delete edge; // Free the memory allocated for the edges
+    for (auto edge : planar.body) free(edge); // Free the memory allocated for the edges
+    for (auto edge : planar2) free(edge); // Free the memory allocated for the edges
     return ans; // Return the results
 }
 
