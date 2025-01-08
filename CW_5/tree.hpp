@@ -584,7 +584,7 @@ class Tree {
     auto cur = root_;
     if (!cur) return result;
     while (cur->left) {
-        cur = cur->left;
+      cur = cur->left;
     }
     result = cur->entry->key;
     return result;

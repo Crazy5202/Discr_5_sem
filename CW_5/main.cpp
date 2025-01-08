@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 
 #include "tree.hpp"
 #include "reader.hpp"
@@ -61,17 +62,25 @@ std::vector<int> sweepline(std::vector<PT>& queries, std::vector<Tree<edge>>& ve
         auto it_elem = versions[pos].upper_bound(dummy_edge); // Find the first edge above the point
 
         if (it_elem != versions[pos].begin() and it_elem != versions[pos].end()) { // Check that it's not begin() or end()
+            auto val_elem = it_elem.get();
+            auto begin_val = versions[pos].begin().get();
             auto prev = versions[pos].previous(it_elem.get());
-            results.push_back(prev.get().face);
-        } else {
+            if (prev != versions[pos].end())
+                results.push_back(prev.get().face);
+            else 
+                results.push_back(-1);
+        } else
             results.push_back(-1);
-        }
     }
     
     return results; // Return the results
 }
 
 int main(int argc, char* argv[]) {
+    auto begin = std::chrono::steady_clock::now();
+    
+    std::ios::sync_with_stdio(0);
+
     if (argc !=8) { // Check that input is right
         std::cout << argc << std::endl;
         std::cerr << "Использование: ./prog search --index <index file> --input <input file> --output <output file>\n";
@@ -116,12 +125,14 @@ int main(int argc, char* argv[]) {
 
     try { // Try to write results
         writeOutput(outputFile, results);
-
-        std::cout << "Программа успешно завершена.\n";
     } catch (const std::exception& e) {
         std::cerr << "Ошибка: " << e.what() << '\n';
         return 1;
     }
+
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    std::cout << "Program took " << duration.count() << " milliseconds to execute" << std::endl;
 
     return 0;
 }

@@ -38,6 +38,7 @@ std::vector<edge> readIndex(const std::string& filePath) {
     	}
         ++counter;
     }
+    file.close();
 
     return planar;
 }
@@ -55,6 +56,8 @@ std::vector<PT> readInput(const std::string& filePath) {
         points.push_back(point);
     }
 
+    file.close();
+
     return points;
 }
 
@@ -68,4 +71,5 @@ void writeOutput(const std::string& filePath, const std::vector<int>& results) {
     for (const auto& result : results) {
         file << std::to_string(result) << '\n';
     }
+    file.close();
 }
