@@ -579,6 +579,17 @@ class Tree {
     return boost::none;
   }
 
+  boost::optional<key_type> begin() const {
+    boost::optional<key_type> result = boost::none;
+    auto cur = root_;
+    if (!cur) return result;
+    while (cur->left) {
+        cur = cur->left;
+    }
+    result = cur->entry->key;
+    return result;
+  }
+
   boost::optional<key_type> upper_bound(const key_type& key) const {
     boost::optional<key_type> result = boost::none;
     auto cur = root_;
@@ -591,7 +602,23 @@ class Tree {
         }
     }
     return result;
-}
+  }
+
+  boost::optional<key_type> previous(const key_type& key) const {
+      auto cur = root_;
+      boost::optional<key_type> predecessor = boost::none;
+
+      while (cur) {
+          if (key > cur->entry->key) {
+              predecessor = cur->entry->key;
+              cur = cur->right;
+          } else {
+              cur = cur->left;
+          }
+      }
+
+      return predecessor;
+  }
 
   std::vector<key_type> items() const {
     std::vector<key_type> out;
@@ -630,5 +657,4 @@ class Tree {
  private:
   node_ptr_type root_;
   std::size_t size_;
-  node_ptr_type min_node;
 };

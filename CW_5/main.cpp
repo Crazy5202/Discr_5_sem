@@ -55,16 +55,26 @@ std::vector<int> sweepline(std::vector<PT>& queries, std::vector<Tree<edge>>& ve
             continue;
         }
         auto pos = it_ver - all_x.begin();
-        auto items = versions[pos].items();
         edge dummy_edge; // Create a dummy edge for the query point
         dummy_edge.left = dummy_edge.right = queries[i];
-        auto it_elem = std::upper_bound(items.begin(), items.end(), dummy_edge);
-        if(it_elem != items.begin()) {
-            --it_elem;
-            results.push_back(it_elem->face);
+
+        auto it_elem = versions[pos].upper_bound(dummy_edge);
+
+        if (it_elem != versions[pos].begin() and it_elem.is_initialized()) {
+            auto prev = versions[pos].previous(it_elem.get());
+            results.push_back(prev.get().face);
         } else {
             results.push_back(-1);
         }
+        
+        // auto items = versions[pos].items();
+        // auto it_elem = std::upper_bound(items.begin(), items.end(), dummy_edge);
+        // if(it_elem != items.begin()) {
+        //     --it_elem;
+        //     results.push_back(it_elem->face);
+        // } else {
+        //     results.push_back(-1);
+        // }
     }
     
     return results; // Return the results
