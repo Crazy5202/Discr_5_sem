@@ -6,7 +6,7 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${fileDirname}/${fileBasenameNoExtension}",
-        "args": ["search", "--index", "texts/index.txt", "--input", "texts/input.txt", "--output", "texts/output.txt"], // Replace with your actual arguments
+        "args": ["search", "--index", "texts/index_1.txt", "--input", "texts/input_1.txt", "--output", "texts/output.txt"], // Replace with your actual arguments
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
         "environment": [],
