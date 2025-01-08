@@ -590,6 +590,10 @@ class Tree {
     return result;
   }
 
+  boost::optional<key_type> end() const {
+    return boost::none;
+  }
+
   boost::optional<key_type> upper_bound(const key_type& key) const {
     boost::optional<key_type> result = boost::none;
     auto cur = root_;
